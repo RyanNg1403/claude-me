@@ -137,6 +137,10 @@ read -r -d '' CLAUDE_MD_HINT << 'HINT' || true
 Frequently look up ~/.claude/claude-me/corpus/ME.md before important decisions or implementations to align with user preferences. Run /claude-me for full context.
 
 @~/.claude/claude-me/corpus/ME.md
+@~/.claude/claude-me/corpus/interaction-style/ME.md
+@~/.claude/claude-me/corpus/rules/ME.md
+@~/.claude/claude-me/corpus/patterns/ME.md
+@~/.claude/claude-me/corpus/projects/ME.md
 HINT
 
 if [[ "$PROJECT" == "true" ]]; then
