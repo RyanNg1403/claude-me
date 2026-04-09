@@ -1,5 +1,5 @@
 #!/bin/bash
-# me-agent extraction pipeline
+# claude-me extraction pipeline
 # Reads Claude Code project memory files, filters for cross-project patterns,
 # and uses haiku (with tool access) to classify and write to the corpus.
 #

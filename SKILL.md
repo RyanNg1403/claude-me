@@ -1,5 +1,5 @@
 ---
-name: me-agent
+name: claude-me
 description: Personal interaction wiki — cross-project preferences and behaviors from Claude Code usage. Use when adapting to user preferences, checking interaction style, or when user asks to sync/update their profile.
 argument-hint: "[sync|consolidate|costs|status|note \"...\"|interview]"
 user-invocable: true
@@ -13,16 +13,16 @@ user-invocable: true
 
 Load the user's preference corpus to adapt your responses.
 
-1. Read `~/.claude/me-agent/corpus/ME.md` to get the top-level index
+1. Read `~/.claude/claude-me/corpus/ME.md` to get the top-level index
 2. Based on the current conversation context, read relevant subfolder ME.md files:
-   - `~/.claude/me-agent/corpus/interaction-style/ME.md` — how the user communicates
-   - `~/.claude/me-agent/corpus/rules/ME.md` — rules the user enforces
-   - `~/.claude/me-agent/corpus/patterns/ME.md` — workflow habits and preferences
-   - `~/.claude/me-agent/corpus/projects/ME.md` — what the user is building
+   - `~/.claude/claude-me/corpus/interaction-style/ME.md` — how the user communicates
+   - `~/.claude/claude-me/corpus/rules/ME.md` — rules the user enforces
+   - `~/.claude/claude-me/corpus/patterns/ME.md` — workflow habits and preferences
+   - `~/.claude/claude-me/corpus/projects/ME.md` — what the user is building
 3. Read specific topic files listed in the subfolder indexes if they're relevant
 4. Apply this knowledge naturally — don't announce it, just adapt
 
-### Sync Mode (`/me-agent sync`)
+### Sync Mode (`/claude-me sync`)
 
 Extract cross-project preferences from all active Claude Code memory folders:
 
@@ -32,7 +32,7 @@ clm sync
 
 Report what was extracted: how many projects scanned, how many new entries added, and which categories they landed in.
 
-### Consolidate Mode (`/me-agent consolidate`)
+### Consolidate Mode (`/claude-me consolidate`)
 
 Merge duplicates, resolve contradictions, prune project-specific leaks (like Claude Code's `/dream`):
 
@@ -42,7 +42,7 @@ clm consolidate
 
 Report what changed: entries merged, deleted, moved, or updated.
 
-### Costs Mode (`/me-agent costs`)
+### Costs Mode (`/claude-me costs`)
 
 Show accumulated Haiku API cost summary:
 
@@ -50,7 +50,7 @@ Show accumulated Haiku API cost summary:
 clm costs
 ```
 
-### Note Mode (`/me-agent note "..."`)
+### Note Mode (`/claude-me note "..."`)
 
 Add a preference note to be processed on next sync:
 
@@ -62,18 +62,18 @@ clm note "always run tests before committing" --now --detach   # processes in ba
 
 Without `--now`, the note is just saved to disk (instant). With `--now`, add `--detach` to avoid blocking the session.
 
-### Interview Mode (`/me-agent interview`)
+### Interview Mode (`/claude-me interview`)
 
 Present pending interview questions to the user and process their answers. Questions are generated during consolidation when Haiku encounters conflicts or ambiguities it cannot resolve alone.
 
-1. Read `~/.claude/me-agent/pending-questions.json`
+1. Read `~/.claude/claude-me/pending-questions.json`
 2. If no questions, tell the user there are no pending questions
 3. Present each question conversationally — show the question, context, and related entries
 4. For each answer the user gives, run: `clm note "Re: <question> — <answer>" --now --detach`
 5. After each answer, clear it: `clm interview --clear <question-id>`
 6. After all questions are answered, or to clear all at once: `clm interview --clear-all`
 
-### Status Mode (`/me-agent status`)
+### Status Mode (`/claude-me status`)
 
 Show corpus stats and system status:
 
@@ -83,10 +83,10 @@ clm status
 
 ## Corpus Structure
 
-The corpus lives at `~/.claude/me-agent/corpus/` (outside the skill repo — your personal data stays private):
+The corpus lives at `~/.claude/claude-me/corpus/` (outside the skill repo — your personal data stays private):
 
 ```
-~/.claude/me-agent/corpus/
+~/.claude/claude-me/corpus/
   ME.md                     Top-level index
   interaction-style/        How you talk to Claude Code
     ME.md + topic files

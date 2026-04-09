@@ -1,5 +1,5 @@
 #!/bin/bash
-# me-agent consolidation pipeline
+# claude-me consolidation pipeline
 # Gives haiku direct tool access to read, merge, and clean up corpus files.
 #
 # Usage:

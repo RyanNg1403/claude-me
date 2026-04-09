@@ -1,5 +1,5 @@
 #!/bin/bash
-# me-agent installer
+# claude-me installer
 # Creates symlink to ~/.claude/skills/, sets up data directory, registers SessionEnd hook
 #
 # Usage:
@@ -21,12 +21,12 @@ done
 ME_AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
 SKILLS_DIR="$CLAUDE_HOME/skills"
-SYMLINK_TARGET="$SKILLS_DIR/me-agent"
+SYMLINK_TARGET="$SKILLS_DIR/claude-me"
 SETTINGS_FILE="$CLAUDE_HOME/settings.json"
-DATA_DIR="$CLAUDE_HOME/me-agent"
+DATA_DIR="$CLAUDE_HOME/claude-me"
 HOOK_COMMAND="bash $SYMLINK_TARGET/scripts/hook-handler.sh"
 
-echo "Installing me-agent..."
+echo "Installing claude-me..."
 
 # ---------------------------------------------------------------------------
 # 1. Create symlink (skill code → repo)
@@ -91,7 +91,7 @@ if [[ ! -f "$SETTINGS_FILE" ]]; then
   echo '{}' > "$SETTINGS_FILE"
 fi
 
-if grep -q "me-agent/scripts/hook-handler.sh" "$SETTINGS_FILE" 2>/dev/null; then
+if grep -q "claude-me/scripts/hook-handler.sh" "$SETTINGS_FILE" 2>/dev/null; then
   echo "  SessionEnd hook already registered"
 else
   if command -v jq &>/dev/null; then
@@ -134,9 +134,9 @@ fi
 read -r -d '' CLAUDE_MD_HINT << 'HINT' || true
 ## User Preferences (claude-me)
 
-Frequently look up ~/.claude/me-agent/corpus/ME.md before important decisions or implementations to align with user preferences. Run /me-agent for full context.
+Frequently look up ~/.claude/claude-me/corpus/ME.md before important decisions or implementations to align with user preferences. Run /claude-me for full context.
 
-@~/.claude/me-agent/corpus/ME.md
+@~/.claude/claude-me/corpus/ME.md
 HINT
 
 if [[ "$PROJECT" == "true" ]]; then
@@ -146,7 +146,7 @@ else
   CLAUDE_MD_FILE="$CLAUDE_HOME/CLAUDE.md"
 fi
 
-if [[ -f "$CLAUDE_MD_FILE" ]] && grep -qF "me-agent/corpus/ME.md" "$CLAUDE_MD_FILE" 2>/dev/null; then
+if [[ -f "$CLAUDE_MD_FILE" ]] && grep -qF "claude-me/corpus/ME.md" "$CLAUDE_MD_FILE" 2>/dev/null; then
   echo "  CLAUDE.md hint already present in $CLAUDE_MD_FILE"
 else
   # Append with a blank line separator
@@ -164,14 +164,14 @@ mkdir -p "$DATA_DIR/notes"
 # Done
 # ---------------------------------------------------------------------------
 echo ""
-echo "me-agent installed successfully!"
+echo "claude-me installed successfully!"
 echo ""
 echo "  Skill:  $SYMLINK_TARGET -> $ME_AGENT_DIR"
 echo "  Data:   $DATA_DIR  (corpus, logs — your personal data)"
 echo ""
 echo "Usage:"
-echo "  /me-agent              Load your preference corpus into context"
-echo "  /me-agent sync         Extract preferences from all active projects"
-echo "  /me-agent consolidate  Merge and clean up corpus entries"
+echo "  /claude-me              Load your preference corpus into context"
+echo "  /claude-me sync         Extract preferences from all active projects"
+echo "  /claude-me consolidate  Merge and clean up corpus entries"
 echo ""
 echo "The SessionEnd hook will automatically extract preferences after each session."

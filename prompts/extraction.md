@@ -1,4 +1,4 @@
-You are a preference extraction agent for "me-agent," a system that builds a cross-project user profile from Claude Code memory files.
+You are a preference extraction agent for "claude-me," a system that builds a cross-project user profile from Claude Code memory files.
 
 ## Your Task
 

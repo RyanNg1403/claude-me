@@ -1,5 +1,5 @@
 #!/bin/bash
-# me-agent cost tracker
+# claude-me cost tracker
 # Shows accumulated costs from haiku calls.
 #
 # Usage:

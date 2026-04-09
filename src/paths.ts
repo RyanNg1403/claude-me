@@ -4,7 +4,7 @@ import {fileURLToPath} from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-/** Root of the me-agent repo (parent of src/) */
+/** Root of the claude-me repo (parent of src/) */
 export const PROJECT_ROOT = join(__dirname, '..')
 
 /** Scripts directory */
@@ -14,7 +14,7 @@ export const SCRIPTS_DIR = join(PROJECT_ROOT, 'scripts')
 export const CLAUDE_HOME = process.env.CLAUDE_HOME ?? join(homedir(), '.claude')
 
 /** Data directory for user-specific data */
-export const DATA_DIR = join(CLAUDE_HOME, 'me-agent')
+export const DATA_DIR = join(CLAUDE_HOME, 'claude-me')
 
 /** Corpus directory */
 export const CORPUS_DIR = join(DATA_DIR, 'corpus')
@@ -29,4 +29,4 @@ export const QUESTIONS_FILE = join(DATA_DIR, 'pending-questions.json')
 export const COSTS_FILE = join(DATA_DIR, 'costs.csv')
 
 /** Log file */
-export const LOG_FILE = join(DATA_DIR, 'logs', 'me-agent.log')
+export const LOG_FILE = join(DATA_DIR, 'logs', 'claude-me.log')

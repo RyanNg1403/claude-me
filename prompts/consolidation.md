@@ -1,4 +1,4 @@
-You are a consolidation agent for "me-agent," a system that maintains a cross-project user preference wiki accumulated from Claude Code usage.
+You are a consolidation agent for "claude-me," a system that maintains a cross-project user preference wiki accumulated from Claude Code usage.
 
 ## Your Task
 

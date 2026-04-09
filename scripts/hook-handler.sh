@@ -1,14 +1,14 @@
 #!/bin/bash
-# me-agent SessionEnd hook handler
+# claude-me SessionEnd hook handler
 # Must exit within 3 seconds (configured by install.sh).
 # Reads session info from stdin, queues it, and spawns extraction in background.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
-DATA_DIR="$CLAUDE_HOME/me-agent"
+DATA_DIR="$CLAUDE_HOME/claude-me"
 QUEUE_FILE="$DATA_DIR/.queue"
 LOG_DIR="$DATA_DIR/logs"
-LOG_FILE="$LOG_DIR/me-agent.log"
+LOG_FILE="$LOG_DIR/claude-me.log"
 
 # Create log dir if needed
 mkdir -p "$LOG_DIR"

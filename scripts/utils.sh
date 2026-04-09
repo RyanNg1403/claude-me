@@ -1,19 +1,19 @@
 #!/bin/bash
-# me-agent shared utilities
+# claude-me shared utilities
 # Sourced by extract.sh, consolidate.sh, and hook-handler.sh
 
 set -euo pipefail
 
-# Resolve the me-agent root directory (parent of scripts/)
+# Resolve the claude-me root directory (parent of scripts/)
 ME_AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_FILE="$ME_AGENT_DIR/config.json"
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
 
 # User data lives outside the repo, in a stable location
-DATA_DIR="$CLAUDE_HOME/me-agent"
+DATA_DIR="$CLAUDE_HOME/claude-me"
 CORPUS_DIR="$DATA_DIR/corpus"
 LOG_DIR="$DATA_DIR/logs"
-LOG_FILE="$LOG_DIR/me-agent.log"
+LOG_FILE="$LOG_DIR/claude-me.log"
 # shellcheck disable=SC2034 # used by extract.sh which sources this file
 QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
@@ -29,7 +29,7 @@ log() {
   mkdir -p "$LOG_DIR"
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
   if [[ "$(get_config_value debug)" == "true" ]]; then
-    echo "[me-agent] $*" >&2
+    echo "[claude-me] $*" >&2
   fi
 }
 
@@ -503,7 +503,7 @@ notify_pending_questions() {
   count="$(pending_question_count)"
   if [[ "$count" -gt 0 ]]; then
     echo ""
-    echo "  $count interview question(s) pending — run 'clm interview' or '/me-agent interview'"
+    echo "  $count interview question(s) pending — run 'clm interview' or '/claude-me interview'"
   fi
 }
 

@@ -42,13 +42,13 @@ Requires: `node >=18`, `jq`, `claude` CLI
 
 | Command | Description |
 |---------|-------------|
-| `/me-agent` | Load your preferences into context |
-| `/me-agent sync` | Extract from all active projects now |
-| `/me-agent consolidate` | Merge and deduplicate the corpus |
-| `/me-agent costs` | Show accumulated API costs |
-| `/me-agent status` | Corpus stats and system health |
-| `/me-agent note "..."` | Add a preference note |
-| `/me-agent interview` | Answer pending preference questions |
+| `/claude-me` | Load your preferences into context |
+| `/claude-me sync` | Extract from all active projects now |
+| `/claude-me consolidate` | Merge and deduplicate the corpus |
+| `/claude-me costs` | Show accumulated API costs |
+| `/claude-me status` | Corpus stats and system health |
+| `/claude-me note "..."` | Add a preference note |
+| `/claude-me interview` | Answer pending preference questions |
 
 ### As a CLI
 
@@ -80,7 +80,7 @@ All LLM calls use Haiku ($0.80/M input, $4.00/M output).
 
 ## Corpus
 
-Stored at `~/.claude/me-agent/corpus/` — private, outside the repo:
+Stored at `~/.claude/claude-me/corpus/` — private, outside the repo:
 
 ```
 interaction-style/   How you communicate with Claude Code

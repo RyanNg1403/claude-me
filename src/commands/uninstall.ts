@@ -11,7 +11,7 @@ export default class Uninstall extends Command {
 
   static flags = {
     purge: Flags.boolean({
-      description: 'Also delete corpus and logs at ~/.claude/me-agent/',
+      description: 'Also delete corpus and logs at ~/.claude/claude-me/',
       default: false,
     }),
   }

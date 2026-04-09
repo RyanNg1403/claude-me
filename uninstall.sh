@@ -1,21 +1,21 @@
 #!/bin/bash
-# me-agent uninstaller
+# claude-me uninstaller
 # Removes symlink and SessionEnd hook. Optionally purges data.
 
 set -euo pipefail
 
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
 SKILLS_DIR="$CLAUDE_HOME/skills"
-SYMLINK_TARGET="$SKILLS_DIR/me-agent"
+SYMLINK_TARGET="$SKILLS_DIR/claude-me"
 SETTINGS_FILE="$CLAUDE_HOME/settings.json"
-DATA_DIR="$CLAUDE_HOME/me-agent"
+DATA_DIR="$CLAUDE_HOME/claude-me"
 
 PURGE=false
 for arg in "$@"; do
   [[ "$arg" == "--purge" ]] && PURGE=true
 done
 
-echo "Uninstalling me-agent..."
+echo "Uninstalling claude-me..."
 
 # ---------------------------------------------------------------------------
 # 1. Remove SessionEnd hook from settings.json
@@ -26,7 +26,7 @@ if [[ -f "$SETTINGS_FILE" ]] && command -v jq &>/dev/null; then
     jq '
       .hooks.SessionEnd = [
         .hooks.SessionEnd[] |
-        select(.hooks | any(.command | contains("me-agent")) | not)
+        select(.hooks | any(.command | contains("claude-me")) | not)
       ] |
       if .hooks.SessionEnd == [] then del(.hooks.SessionEnd) else . end
     ' "$SETTINGS_FILE" > "$tmp" && mv "$tmp" "$SETTINGS_FILE"
@@ -36,7 +36,7 @@ if [[ -f "$SETTINGS_FILE" ]] && command -v jq &>/dev/null; then
   fi
 else
   echo "  WARNING: Could not update settings.json (jq not found or file missing)"
-  echo "  Please manually remove the me-agent hook from $SETTINGS_FILE"
+  echo "  Please manually remove the claude-me hook from $SETTINGS_FILE"
 fi
 
 # ---------------------------------------------------------------------------
@@ -62,4 +62,4 @@ else
 fi
 
 echo ""
-echo "me-agent uninstalled."
+echo "claude-me uninstalled."
