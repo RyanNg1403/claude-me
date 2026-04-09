@@ -1,4 +1,5 @@
 import {Command, Flags} from '@oclif/core'
+import {resolve} from 'node:path'
 import {runScript} from '../run-script.js'
 
 export default class Sync extends Command {
@@ -6,6 +7,7 @@ export default class Sync extends Command {
 
   static examples = [
     '<%= config.bin %> sync',
+    '<%= config.bin %> sync --project .',
     '<%= config.bin %> sync --project /path/to/project',
   ]
 
@@ -20,8 +22,9 @@ export default class Sync extends Command {
     const {flags} = await this.parse(Sync)
 
     if (flags.project) {
-      this.log(`Extracting from: ${flags.project}`)
-      runScript('extract.sh', ['--project', flags.project])
+      const resolved = resolve(flags.project)
+      this.log(`Extracting from: ${resolved}`)
+      runScript('extract.sh', ['--project', resolved])
     } else {
       this.log('Extracting from all active projects...')
       runScript('extract.sh', ['--all-active'])

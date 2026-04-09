@@ -336,6 +336,10 @@ rm -rf "$STAGING_DIR"
 if [[ -f "$SOURCES_FILE" ]]; then
   while IFS=' ' read -r src_key src_mtime; do
     mark_processed "$src_key" "$src_mtime"
+    # Delete processed note files (corpus is the durable output)
+    if [[ "$src_key" == notes/* ]]; then
+      rm -f "$NOTES_DIR/${src_key#notes/}"
+    fi
   done < "$SOURCES_FILE"
 fi
 
