@@ -289,12 +289,17 @@ rebuild_subfolder_index() {
   } > "$me_file"
 }
 
+# Max entries per category in the top-level ME.md (included in CC context via @include)
+MAX_ENTRIES_PER_CATEGORY=30
+
 # Rebuild the top-level corpus ME.md from all subfolders
+# Lists actual entries (name + description) per category, capped at MAX_ENTRIES_PER_CATEGORY.
+# This is the single file @included in CLAUDE.md.
 rebuild_top_index() {
   local me_file="$CORPUS_DIR/ME.md"
 
   {
-    echo "# Me Agent"
+    echo "# claude-me"
     echo ""
     echo "> Cross-project preferences, patterns, and behaviors accumulated from Claude Code usage."
     echo ""
@@ -304,15 +309,35 @@ rebuild_top_index() {
       local subfolder_name
       subfolder_name="$(basename "$subfolder")"
 
-      # Count topic files (exclude ME.md)
-      local count=0
+      local total=0
+      local entries=()
       for f in "$subfolder"/*.md; do
         [[ -f "$f" ]] || continue
         [[ "$(basename "$f")" == "ME.md" ]] && continue
-        count=$((count + 1))
+        local name desc fname
+        name="$(get_frontmatter_field "$f" "name")"
+        desc="$(get_frontmatter_field "$f" "description")"
+        fname="$(basename "$f")"
+        entries+=("- [$name]($subfolder_name/$fname) — $desc")
+        total=$((total + 1))
       done
 
-      echo "- [$subfolder_name/]($subfolder_name/ME.md) — $count entries"
+      [[ $total -eq 0 ]] && continue
+
+      echo "## $subfolder_name"
+      echo ""
+
+      local shown=0
+      for entry in "${entries[@]}"; do
+        if [[ $shown -ge $MAX_ENTRIES_PER_CATEGORY ]]; then
+          echo "- ... and $((total - shown)) more"
+          break
+        fi
+        echo "$entry"
+        shown=$((shown + 1))
+      done
+
+      echo ""
     done
   } > "$me_file"
 }
