@@ -18,11 +18,12 @@ Claude Code's memory is project-scoped. You correct it in one project, but the n
 ```mermaid
 graph LR
     A["CC memories<br/>(per-project)"] -->|SessionEnd hook| B["Filter + track<br/>(zero tokens)"]
+    N["clm note '...'"] --> B
     B -->|new entries?| C["Haiku classifies<br/>+ writes corpus"]
     C -->|every 24h| D["Haiku consolidates<br/>(merge, dedup, prune)"]
 ```
 
-We never mine raw transcripts. CC already extracted and refined project memories — we read those `.md` files, filter with source tracking (free), and only call Haiku when there's genuinely new material. Most sessions cost **$0.00**.
+Two input paths: CC memories are extracted automatically via SessionEnd hook; `clm note` lets you add preferences directly. Both are filtered with source tracking (free) — Haiku is only called when there's genuinely new material. Notes can override or delete existing corpus entries.
 
 ## Install
 
@@ -46,6 +47,7 @@ Requires: `node >=18`, `jq`, `claude` CLI
 | `/me-agent consolidate` | Merge and deduplicate the corpus |
 | `/me-agent costs` | Show accumulated API costs |
 | `/me-agent status` | Corpus stats and system health |
+| `/me-agent note "..."` | Add a preference note |
 
 ### As a CLI
 
@@ -55,6 +57,9 @@ Requires: `node >=18`, `jq`, `claude` CLI
 | `clm consolidate` | Merge and deduplicate |
 | `clm costs` | Show API cost breakdown |
 | `clm status` | Corpus stats and system health |
+| `clm note "..."` | Add a preference note |
+| `clm note "..." --now` | Add + process immediately |
+| `clm note "..." --detach` | Add + process in background |
 | `clm install` | Set up hook + symlink + corpus |
 | `clm uninstall` | Remove hook + symlink |
 

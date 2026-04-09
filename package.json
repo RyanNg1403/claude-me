@@ -25,7 +25,6 @@
     "./dist",
     "./scripts",
     "./prompts",
-    "./corpus",
     "./config.json",
     "./install.sh",
     "./uninstall.sh",

@@ -19,6 +19,9 @@ export const DATA_DIR = join(CLAUDE_HOME, 'me-agent')
 /** Corpus directory */
 export const CORPUS_DIR = join(DATA_DIR, 'corpus')
 
+/** Notes directory */
+export const NOTES_DIR = join(DATA_DIR, 'notes')
+
 /** Costs CSV file */
 export const COSTS_FILE = join(DATA_DIR, 'costs.csv')
 

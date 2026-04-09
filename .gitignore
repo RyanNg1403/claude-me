@@ -13,4 +13,4 @@ REPORT.md
 
 # OS files
 .DS_Store
-corpus/.consolidate-lock
+corpus/

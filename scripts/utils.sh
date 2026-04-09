@@ -17,6 +17,7 @@ LOG_FILE="$LOG_DIR/me-agent.log"
 QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
 PROCESSED_FILE="$DATA_DIR/.processed"
+NOTES_DIR="$DATA_DIR/notes"
 COSTS_FILE="$DATA_DIR/costs.csv"
 
 # ---------------------------------------------------------------------------
@@ -403,6 +404,88 @@ record_cost() {
 }
 
 # Print cost summary
+# ---------------------------------------------------------------------------
+# Notes — user-injected preferences
+# ---------------------------------------------------------------------------
+
+# Write a note to the notes directory. Returns the path of the created file.
+# Usage: write_note "always run tests before committing"
+write_note() {
+  local text="$1"
+  if [[ -z "$text" ]]; then
+    echo "Note text is required" >&2
+    return 1
+  fi
+
+  mkdir -p "$NOTES_DIR"
+
+  local ts
+  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+  # Derive a slug from the first few words for readability
+  local slug
+  slug="$(echo "$text" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | sed 's/--*/-/g' | cut -c1-50 | sed 's/-$//')"
+  local fname="${ts}-${slug}.md"
+  local fpath="$NOTES_DIR/$fname"
+
+  cat > "$fpath" <<EOF
+---
+name: User note
+description: $text
+source: clm-note
+created: $ts
+---
+
+$text
+EOF
+
+  echo "$fpath"
+}
+
+# Collect unprocessed notes and append them to a candidates file.
+# Usage: collect_notes "$CANDIDATES_FILE" "$SOURCES_FILE"
+# Returns the number of notes collected (via global NOTE_COUNT).
+NOTE_COUNT=0
+collect_notes() {
+  local candidates_file="$1"
+  local sources_file="$2"
+  NOTE_COUNT=0
+
+  if [[ ! -d "$NOTES_DIR" ]]; then
+    return
+  fi
+
+  for note_file in "$NOTES_DIR"/*.md; do
+    [[ -f "$note_file" ]] || continue
+
+    local fname
+    fname="$(basename "$note_file")"
+    local source_key="notes/$fname"
+    local file_mtime
+    file_mtime="$(get_mtime "$note_file")"
+
+    if is_already_processed "$source_key" "$file_mtime"; then
+      continue
+    fi
+
+    local note_content
+    note_content="$(cat "$note_file")"
+
+    echo "$source_key $file_mtime" >> "$sources_file"
+
+    {
+      echo "---SOURCE: user-note / $fname---"
+      echo "$note_content"
+      echo ""
+    } >> "$candidates_file"
+
+    NOTE_COUNT=$((NOTE_COUNT + 1))
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Cost tracking
+# ---------------------------------------------------------------------------
+
 print_cost_summary() {
   if [[ ! -f "$COSTS_FILE" ]] || [[ $(wc -l < "$COSTS_FILE") -le 1 ]]; then
     echo "No cost data yet."

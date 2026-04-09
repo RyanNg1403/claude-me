@@ -1,7 +1,7 @@
 ---
 name: me-agent
 description: Personal interaction wiki — cross-project preferences and behaviors from Claude Code usage. Use when adapting to user preferences, checking interaction style, or when user asks to sync/update their profile.
-argument-hint: "[sync|consolidate|costs|status]"
+argument-hint: "[sync|consolidate|costs|status|note \"...\"]"
 user-invocable: true
 ---
 
@@ -52,6 +52,18 @@ Show accumulated Haiku API cost summary:
 clm costs
 ```
 
+### Note Mode (`/me-agent note "..."`)
+
+Add a preference note to be processed on next sync:
+
+```bash
+clm note "always run tests before committing"
+clm note "always run tests before committing" --now      # blocks until processed
+clm note "always run tests before committing" --detach   # processes in background
+```
+
+Use `--detach` when calling from within a Claude Code session to avoid blocking. Notes are evaluated critically by Haiku — not blindly added. If a note contradicts an existing corpus entry, the old entry is updated or deleted.
+
 ### Status Mode (`/me-agent status`)
 
 Show corpus stats and system status:
@@ -85,4 +97,5 @@ Each topic file uses markdown with YAML frontmatter (name, description) — same
 - Entries are extracted from Claude Code's own project memory folders (piggybacking on CC's extraction/consolidation)
 - Extraction runs automatically via SessionEnd hook, or manually via `/me-agent sync` or `clm sync`
 - Consolidation runs every 24 hours (configurable) or manually via `/me-agent consolidate` or `clm consolidate`
-- Corpus and logs live at `~/.claude/me-agent/`, separate from the skill repo
+- Notes (`clm note "..."`) let users add preferences directly without relying on CC's memory system
+- Corpus, notes, and logs live at `~/.claude/me-agent/`, separate from the skill repo
