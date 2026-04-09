@@ -1,5 +1,5 @@
 import {Command, Flags} from '@oclif/core'
-import {execSync, spawnSync} from 'node:child_process'
+import {execFileSync, execSync, spawnSync} from 'node:child_process'
 import {existsSync, readFileSync, writeFileSync, unlinkSync, mkdtempSync} from 'node:fs'
 import {join, basename} from 'node:path'
 import {tmpdir} from 'node:os'
@@ -183,7 +183,7 @@ export default class Interview extends Command {
     // Process the notes
     this.log('Running extraction...')
     const scriptPath = join(SCRIPTS_DIR, 'extract.sh')
-    execSync(`bash "${scriptPath}" --notes-only`, {
+    execFileSync('bash', [scriptPath, '--notes-only'], {
       stdio: 'inherit',
       env: {...process.env},
     })
