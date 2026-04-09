@@ -25,7 +25,7 @@ graph LR
     C -.->|auto-loaded| F["Always in CC context"]
 ```
 
-Two input paths: CC memories are extracted automatically via SessionEnd hook; `clm note` lets you add preferences directly. Both are filtered with source tracking (free) — Haiku is only called when there's genuinely new material. The corpus index is auto-loaded into every CC session via `@include`.
+Two input paths: CC memories (automatic via SessionEnd hook) and `clm note` (manual). Source tracking filters for free — Haiku is only called for genuinely new material. The corpus index is auto-loaded into every CC session via `@include`.
 
 ## Install
 
@@ -38,38 +38,18 @@ clm install
 
 Requires: `node >=18`, `jq`, `claude` CLI
 
-## Usage
+## Quick Start
 
-### As a Claude Code skill
+```bash
+clm sync                    # extract from all active CC projects
+clm note "prefer early returns"   # add a preference directly
+clm consolidate             # merge and deduplicate corpus
+clm status                  # corpus stats and system health
+```
 
-| Command | Description |
-|---------|-------------|
-| `/claude-me` | Load your preferences into context |
-| `/claude-me sync` | Extract from all active projects now |
-| `/claude-me consolidate` | Merge and deduplicate the corpus |
-| `/claude-me consolidate "..."` | Consolidate with specific focus |
-| `/claude-me costs` | Show accumulated API costs |
-| `/claude-me status` | Corpus stats and system health |
-| `/claude-me note "..."` | Add a preference note |
-| `/claude-me interview` | Answer pending preference questions |
+As a Claude Code skill: `/claude-me`, `/claude-me sync`, `/claude-me note "..."`, etc.
 
-### As a CLI
-
-| Command | Description |
-|---------|-------------|
-| `clm sync` | Extract from all active projects |
-| `clm consolidate` | Merge and deduplicate |
-| `clm consolidate "..."` | Consolidate with specific focus |
-| `clm costs` | Show API cost breakdown |
-| `clm status` | Corpus stats and system health |
-| `clm note "..."` | Add a preference note |
-| `clm note "..." --now` | Add + process immediately |
-| `clm note "..." --now --detach` | Add + process in background |
-| `clm interview` | Answer pending preference questions |
-| `clm install` | Set up hook + symlink + corpus |
-| `clm uninstall` | Remove hook + symlink |
-
-After installation, extraction runs **automatically** on every session end. No manual effort needed.
+Full CLI reference: [docs/cli.md](docs/cli.md)
 
 ## Cost
 
@@ -77,23 +57,9 @@ After installation, extraction runs **automatically** on every session end. No m
 |----------|------|
 | No new memories (most sessions) | **$0.00** |
 | Per session (~3 candidates) | ~$0.002 |
-| Daily consolidation | ~$0.003 |
 | Monthly (10 sessions/day) | ~$0.69 |
 
 All LLM calls use Haiku ($0.80/M input, $4.00/M output).
-
-## Corpus
-
-Stored at `~/.claude/claude-me/corpus/` — private, outside the repo:
-
-```
-interaction-style/   How you communicate with Claude Code
-rules/               Corrections you enforce everywhere
-patterns/            Workflow habits and tool preferences
-projects/            High-level view of what you're building
-```
-
-Each entry uses the same markdown + frontmatter format as CC memories.
 
 ## Configuration
 
