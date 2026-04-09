@@ -88,7 +88,7 @@ if [[ "$MODE" != "notes" ]]; then
   esac
 
   if [[ ${#PROJECT_SLUGS[@]} -gt 0 ]]; then
-    PROJECT_SLUGS=($(printf '%s\n' "${PROJECT_SLUGS[@]}" | sort -u))
+    mapfile -t PROJECT_SLUGS < <(printf '%s\n' "${PROJECT_SLUGS[@]}" | sort -u)
     log "Scanning ${#PROJECT_SLUGS[@]} project(s) for CC memories"
 
     for slug in "${PROJECT_SLUGS[@]}"; do
@@ -135,6 +135,7 @@ fi
 
 # --- Pending notes (all modes) ---
 collect_notes "$CANDIDATES_FILE" "$SOURCES_FILE"
+# shellcheck disable=SC2153 # NOTE_COUNT is set by collect_notes() in utils.sh
 note_count=$NOTE_COUNT
 candidate_count=$((candidate_count + note_count))
 

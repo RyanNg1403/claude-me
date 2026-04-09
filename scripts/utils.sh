@@ -14,6 +14,7 @@ DATA_DIR="$CLAUDE_HOME/me-agent"
 CORPUS_DIR="$DATA_DIR/corpus"
 LOG_DIR="$DATA_DIR/logs"
 LOG_FILE="$LOG_DIR/me-agent.log"
+# shellcheck disable=SC2034 # used by extract.sh which sources this file
 QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
 PROCESSED_FILE="$DATA_DIR/.processed"
@@ -52,7 +53,7 @@ get_config_value() {
 # Replicate Claude Code's sanitizePath: replace all non-alphanumeric chars with '-'
 compute_slug() {
   local path="$1"
-  echo "$path" | sed 's/[^a-zA-Z0-9]/-/g'
+  echo "${path//[^a-zA-Z0-9]/-}"
 }
 
 # Find the actual project directory for a given cwd.
