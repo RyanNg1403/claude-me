@@ -47,6 +47,7 @@ Requires: `node >=18`, `jq`, `claude` CLI
 | `/claude-me` | Load your preferences into context |
 | `/claude-me sync` | Extract from all active projects now |
 | `/claude-me consolidate` | Merge and deduplicate the corpus |
+| `/claude-me consolidate "..."` | Consolidate with specific focus |
 | `/claude-me costs` | Show accumulated API costs |
 | `/claude-me status` | Corpus stats and system health |
 | `/claude-me note "..."` | Add a preference note |
@@ -58,6 +59,7 @@ Requires: `node >=18`, `jq`, `claude` CLI
 |---------|-------------|
 | `clm sync` | Extract from all active projects |
 | `clm consolidate` | Merge and deduplicate |
+| `clm consolidate "..."` | Consolidate with specific focus |
 | `clm costs` | Show API cost breakdown |
 | `clm status` | Corpus stats and system health |
 | `clm note "..."` | Add a preference note |

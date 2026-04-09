@@ -29,13 +29,14 @@ Report what was extracted: how many projects scanned, how many new entries added
 
 ### Consolidate Mode (`/claude-me consolidate`)
 
-Merge duplicates, resolve contradictions, prune project-specific leaks (like Claude Code's `/dream`):
+Merge duplicates, resolve contradictions, prune project-specific leaks:
 
 ```bash
 clm consolidate
+clm consolidate "merge all PR-related entries"
 ```
 
-Report what changed: entries merged, deleted, moved, or updated.
+Optional focus text guides Haiku to prioritize specific criteria. Report what changed.
 
 ### Costs Mode (`/claude-me costs`)
 

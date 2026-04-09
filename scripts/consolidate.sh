@@ -15,10 +15,12 @@ source "$SCRIPT_DIR/utils.sh"
 # Parse arguments
 # ---------------------------------------------------------------------------
 FORCE=false
+FOCUS=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --force) FORCE=true; shift ;;
-    *)       echo "Unknown option: $1" >&2; exit 1 ;;
+    --force)  FORCE=true; shift ;;
+    --focus)  FOCUS="$2"; shift 2 ;;
+    *)        echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
 
@@ -114,7 +116,11 @@ SYEOF
 
 log "Calling claude -p --model $consolidation_model (with tools)"
 
-USER_MSG="Read all corpus files and consolidate now."
+if [[ -n "$FOCUS" ]]; then
+  USER_MSG="Read all corpus files and consolidate now. FOCUS: $FOCUS"
+else
+  USER_MSG="Read all corpus files and consolidate now."
+fi
 input_chars=$(( $(wc -c < "$SYSTEM_PROMPT_FILE") + ${#USER_MSG} ))
 RESPONSE_FILE="$(mktemp)"
 
