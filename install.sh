@@ -1,8 +1,20 @@
 #!/bin/bash
 # me-agent installer
 # Creates symlink to ~/.claude/skills/, sets up data directory, registers SessionEnd hook
+#
+# Usage:
+#   install.sh            Add CLAUDE.md hint to current project (./CLAUDE.md)
+#   install.sh --global   Add CLAUDE.md hint to ~/.claude/CLAUDE.md (all projects)
 
 set -euo pipefail
+
+GLOBAL=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --global) GLOBAL=true; shift ;;
+    *)        echo "Unknown option: $1" >&2; exit 1 ;;
+  esac
+done
 
 ME_AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
@@ -43,18 +55,23 @@ fi
 mkdir -p "$DATA_DIR/corpus/"{interaction-style,projects,rules,patterns}
 mkdir -p "$DATA_DIR/logs"
 
-# Copy ME.md scaffolds if they don't exist yet
+# Create ME.md scaffolds if they don't exist yet
 for subdir in interaction-style projects rules patterns; do
   target="$DATA_DIR/corpus/$subdir/ME.md"
-  source="$ME_AGENT_DIR/corpus/$subdir/ME.md"
-  if [[ ! -f "$target" ]] && [[ -f "$source" ]]; then
-    cp "$source" "$target"
+  if [[ ! -f "$target" ]]; then
+    echo "# $subdir" > "$target"
+    echo "" >> "$target"
+    echo "<!-- No entries yet -->" >> "$target"
   fi
 done
 
-# Top-level ME.md
-if [[ ! -f "$DATA_DIR/corpus/ME.md" ]] && [[ -f "$ME_AGENT_DIR/corpus/ME.md" ]]; then
-  cp "$ME_AGENT_DIR/corpus/ME.md" "$DATA_DIR/corpus/ME.md"
+if [[ ! -f "$DATA_DIR/corpus/ME.md" ]]; then
+  cat > "$DATA_DIR/corpus/ME.md" <<'SCAFFOLD'
+# Me Agent
+
+> Cross-project preferences, patterns, and behaviors accumulated from Claude Code usage.
+
+SCAFFOLD
 fi
 
 echo "  Data directory: $DATA_DIR"
@@ -108,6 +125,31 @@ EOF
     echo "  {\"hooks\":{\"SessionEnd\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"$HOOK_COMMAND\"}]}]}}"
   fi
 fi
+
+# ---------------------------------------------------------------------------
+# 5. Add CLAUDE.md hint
+# ---------------------------------------------------------------------------
+CLAUDE_MD_HINT="Frequently look up ~/.claude/me-agent/corpus/ME.md before important decisions or implementations to align with user preferences. Run /me-agent for full context."
+
+if [[ "$GLOBAL" == "true" ]]; then
+  CLAUDE_MD_FILE="$CLAUDE_HOME/CLAUDE.md"
+else
+  CLAUDE_MD_FILE="./CLAUDE.md"
+fi
+
+if [[ -f "$CLAUDE_MD_FILE" ]] && grep -qF "me-agent/corpus/ME.md" "$CLAUDE_MD_FILE" 2>/dev/null; then
+  echo "  CLAUDE.md hint already present in $CLAUDE_MD_FILE"
+else
+  # Append with a blank line separator
+  if [[ -f "$CLAUDE_MD_FILE" ]] && [[ -s "$CLAUDE_MD_FILE" ]]; then
+    echo "" >> "$CLAUDE_MD_FILE"
+  fi
+  echo "$CLAUDE_MD_HINT" >> "$CLAUDE_MD_FILE"
+  echo "  Added hint to $CLAUDE_MD_FILE"
+fi
+
+# Create notes directory
+mkdir -p "$DATA_DIR/notes"
 
 # ---------------------------------------------------------------------------
 # Done
