@@ -17,6 +17,7 @@ LOG_FILE="$LOG_DIR/me-agent.log"
 QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
 PROCESSED_FILE="$DATA_DIR/.processed"
+COSTS_FILE="$DATA_DIR/costs.csv"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -354,4 +355,126 @@ mark_processed() {
 
   # Append new entry
   echo "${source_key} ${mtime}" >> "$PROCESSED_FILE"
+}
+
+# ---------------------------------------------------------------------------
+# Cost tracking
+# ---------------------------------------------------------------------------
+
+# Initialize costs.csv with header if it doesn't exist
+init_costs_file() {
+  if [[ ! -f "$COSTS_FILE" ]]; then
+    mkdir -p "$(dirname "$COSTS_FILE")"
+    echo "timestamp,type,model,input_chars,output_chars,est_input_tokens,est_output_tokens,est_cost_usd" > "$COSTS_FILE"
+  fi
+}
+
+# Record a haiku call's estimated cost
+# Usage: record_cost "extraction|consolidation" "model" "input_chars" "output_chars"
+record_cost() {
+  local call_type="$1"
+  local model="$2"
+  local input_chars="$3"
+  local output_chars="$4"
+
+  init_costs_file
+
+  # Estimate tokens (roughly 1 token per 4 chars)
+  local input_tokens=$(( input_chars / 4 ))
+  local output_tokens=$(( output_chars / 4 ))
+
+  # Haiku pricing: $0.80/M input, $4.00/M output
+  # Use integer math in cents to avoid bc dependency
+  # input_cost_microcents = input_tokens * 80 / 1000000
+  # output_cost_microcents = output_tokens * 400 / 1000000
+  # Simplified: cost_usd = (input_tokens * 0.8 + output_tokens * 4.0) / 1000000
+  local est_cost
+  if command -v python3 &>/dev/null; then
+    est_cost="$(python3 -c "print(f'{($input_tokens * 0.8 + $output_tokens * 4.0) / 1000000:.6f}')")"
+  else
+    est_cost="0.000000"
+  fi
+
+  local ts
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  echo "$ts,$call_type,$model,$input_chars,$output_chars,$input_tokens,$output_tokens,$est_cost" >> "$COSTS_FILE"
+  log "Cost: ~\$$est_cost ($call_type, ~${input_tokens} in / ~${output_tokens} out)"
+}
+
+# Print cost summary
+print_cost_summary() {
+  if [[ ! -f "$COSTS_FILE" ]] || [[ $(wc -l < "$COSTS_FILE") -le 1 ]]; then
+    echo "No cost data yet."
+    return
+  fi
+
+  python3 - "$COSTS_FILE" << 'PYEOF'
+import csv, sys
+from datetime import datetime, timezone, timedelta
+from collections import defaultdict
+
+costs_file = sys.argv[1] if len(sys.argv) > 1 else ""
+if not costs_file:
+    print("No costs file specified")
+    sys.exit(1)
+
+rows = []
+with open(costs_file) as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        row["est_cost_usd"] = float(row["est_cost_usd"])
+        row["est_input_tokens"] = int(row["est_input_tokens"])
+        row["est_output_tokens"] = int(row["est_output_tokens"])
+        row["dt"] = datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
+        rows.append(row)
+
+if not rows:
+    print("No cost data yet.")
+    sys.exit(0)
+
+now = datetime.now(timezone.utc)
+today = now.date()
+month_start = today.replace(day=1)
+
+total_cost = sum(r["est_cost_usd"] for r in rows)
+total_calls = len(rows)
+today_rows = [r for r in rows if r["dt"].date() == today]
+today_cost = sum(r["est_cost_usd"] for r in today_rows)
+month_rows = [r for r in rows if r["dt"].date() >= month_start]
+month_cost = sum(r["est_cost_usd"] for r in month_rows)
+
+# Daily breakdown (last 7 days)
+daily = defaultdict(float)
+for r in rows:
+    daily[r["dt"].strftime("%Y-%m-%d")] += r["est_cost_usd"]
+
+# By type
+by_type = defaultdict(lambda: {"calls": 0, "cost": 0.0})
+for r in rows:
+    by_type[r["type"]]["calls"] += 1
+    by_type[r["type"]]["cost"] += r["est_cost_usd"]
+
+print("=" * 50)
+print("  claude-me Cost Summary")
+print("=" * 50)
+print(f"  Total calls:     {total_calls}")
+print(f"  Total cost:      ${total_cost:.4f}")
+print(f"  Today's cost:    ${today_cost:.4f}  ({len(today_rows)} calls)")
+print(f"  This month:      ${month_cost:.4f}  ({len(month_rows)} calls)")
+if total_calls > 0:
+    print(f"  Avg per call:    ${total_cost / total_calls:.4f}")
+print()
+
+print("  By type:")
+for t, d in sorted(by_type.items()):
+    print(f"    {t:20s}  {d['calls']:3d} calls  ${d['cost']:.4f}")
+print()
+
+print("  Daily (last 7 days):")
+last_7 = sorted(daily.items())[-7:]
+for day, cost in last_7:
+    print(f"    {day}  ${cost:.4f}")
+print("=" * 50)
+PYEOF
 }

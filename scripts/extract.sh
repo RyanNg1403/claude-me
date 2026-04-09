@@ -191,15 +191,22 @@ $(cat "$CANDIDATES_FILE")"
 
 log "Calling claude -p --model $extraction_model (with tools)"
 
+RESPONSE_FILE="$(mktemp)"
+input_chars=$(( $(wc -c < "$SYSTEM_PROMPT_FILE") + ${#USER_PROMPT} ))
+
 if ! echo "$USER_PROMPT" | claude -p \
   --model "$extraction_model" \
   --tools "Read,Write,Bash" \
   --system-prompt-file "$SYSTEM_PROMPT_FILE" \
   --dangerously-skip-permissions \
-  >> "$LOG_FILE" 2>&1; then
+  2>&1 | tee -a "$LOG_FILE" > "$RESPONSE_FILE"; then
   log "ERROR: claude -p failed"
   exit 1
 fi
+
+output_chars=$(wc -c < "$RESPONSE_FILE")
+record_cost "extraction" "$extraction_model" "$input_chars" "$output_chars"
+rm -f "$RESPONSE_FILE"
 
 # Move staged files into corpus
 for category_dir in "$STAGING_DIR"/*/; do

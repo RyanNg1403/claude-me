@@ -2,7 +2,7 @@
 name: me-agent
 description: Personal interaction wiki — cross-project preferences, patterns, and behaviors from Claude Code usage
 when_to_use: When adapting to the user's preferences, checking their interaction style, or when they ask to sync/update their profile. Also auto-invoke when the user's request would benefit from knowing their established patterns.
-argument-hint: "[sync|consolidate]"
+argument-hint: "[sync|consolidate|costs]"
 arguments: action
 user-invocable: true
 allowed-tools:
@@ -52,6 +52,16 @@ bash ${CLAUDE_SKILL_DIR}/scripts/consolidate.sh --force
 ```
 
 Report what changed: entries merged, deleted, moved, or updated.
+
+### Costs Mode (`/me-agent costs`)
+
+Show accumulated cost summary:
+
+```bash
+bash ${CLAUDE_SKILL_DIR}/scripts/costs.sh
+```
+
+Shows total cost, today's cost, this month's cost, average per call, and daily breakdown.
 
 ## Corpus Structure
 

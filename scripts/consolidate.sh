@@ -114,16 +114,24 @@ SYEOF
 
 log "Calling claude -p --model $consolidation_model (with tools)"
 
-if ! echo "Read all corpus files and consolidate now." | claude -p \
+USER_MSG="Read all corpus files and consolidate now."
+input_chars=$(( $(wc -c < "$SYSTEM_PROMPT_FILE") + ${#USER_MSG} ))
+RESPONSE_FILE="$(mktemp)"
+
+if ! echo "$USER_MSG" | claude -p \
   --model "$consolidation_model" \
   --tools "Read,Write,Edit,Bash,Glob" \
   --system-prompt-file "$SYSTEM_PROMPT_FILE" \
   --dangerously-skip-permissions \
-  >> "$LOG_FILE" 2>&1; then
+  2>&1 | tee -a "$LOG_FILE" > "$RESPONSE_FILE"; then
   log "ERROR: claude -p failed"
-  rm -rf "$STAGING_DIR"
+  rm -rf "$STAGING_DIR" "$RESPONSE_FILE"
   exit 1
 fi
+
+output_chars=$(wc -c < "$RESPONSE_FILE")
+record_cost "consolidation" "$consolidation_model" "$input_chars" "$output_chars"
+rm -f "$RESPONSE_FILE"
 
 # Apply changes: sync staging back to corpus
 # Delete files that haiku removed
