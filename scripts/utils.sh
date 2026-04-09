@@ -16,6 +16,7 @@ LOG_DIR="$DATA_DIR/logs"
 LOG_FILE="$LOG_DIR/me-agent.log"
 QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
+PROCESSED_FILE="$DATA_DIR/.processed"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -280,4 +281,46 @@ rebuild_top_index() {
       echo "- [$subfolder_name/]($subfolder_name/ME.md) — $count entries"
     done
   } > "$me_file"
+}
+
+# ---------------------------------------------------------------------------
+# Source tracking — track which CC memory files we've already processed
+# ---------------------------------------------------------------------------
+
+# Get the mtime of a file as epoch seconds
+get_mtime() {
+  local file="$1"
+  stat -f '%m' "$file" 2>/dev/null || stat -c '%Y' "$file" 2>/dev/null
+}
+
+# Check if a source file has already been processed (same path + mtime)
+# Returns 0 if already processed (skip), 1 if new or updated (process)
+is_already_processed() {
+  local source_key="$1"  # slug/filename
+  local mtime="$2"
+
+  if [[ ! -f "$PROCESSED_FILE" ]]; then
+    return 1  # No manifest yet, everything is new
+  fi
+
+  grep -q "^${source_key} ${mtime}$" "$PROCESSED_FILE" 2>/dev/null
+}
+
+# Mark a source file as processed
+mark_processed() {
+  local source_key="$1"  # slug/filename
+  local mtime="$2"
+
+  mkdir -p "$(dirname "$PROCESSED_FILE")"
+
+  # Remove any old entry for this source key (mtime may have changed)
+  if [[ -f "$PROCESSED_FILE" ]]; then
+    local tmp
+    tmp="$(mktemp)"
+    grep -v "^${source_key} " "$PROCESSED_FILE" > "$tmp" 2>/dev/null || true
+    mv "$tmp" "$PROCESSED_FILE"
+  fi
+
+  # Append new entry
+  echo "${source_key} ${mtime}" >> "$PROCESSED_FILE"
 }

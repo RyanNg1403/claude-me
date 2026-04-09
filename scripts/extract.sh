@@ -83,7 +83,7 @@ log "Extracting from ${#PROJECT_SLUGS[@]} project(s)"
 CANDIDATES_FILE="$(mktemp)"
 PROMPT_FILE=""
 RESPONSE_FILE=""
-trap 'rm -f "$CANDIDATES_FILE" "$PROMPT_FILE" "$RESPONSE_FILE"' EXIT
+trap 'rm -f "$CANDIDATES_FILE" "$CANDIDATES_FILE.sources" "$PROMPT_FILE" "$RESPONSE_FILE"' EXIT
 
 candidate_count=0
 
@@ -106,8 +106,6 @@ for slug in "${PROJECT_SLUGS[@]}"; do
 
     # Parse frontmatter
     mem_type="$(get_frontmatter_field "$mem_file" "type")"
-    mem_name="$(get_frontmatter_field "$mem_file" "name")"
-    mem_desc="$(get_frontmatter_field "$mem_file" "description")"
 
     # Filter: keep user, feedback, and reference types
     case "$mem_type" in
@@ -115,17 +113,18 @@ for slug in "${PROJECT_SLUGS[@]}"; do
       *) continue ;;
     esac
 
-    # Dedup: check if description or name already exists in corpus
-    # Search both ME.md indexes and all topic file frontmatter
-    if grep -rq "$mem_desc" "$CORPUS_DIR"/ 2>/dev/null; then
-      continue
-    fi
-    if [[ -n "$mem_name" ]] && grep -rlq "$mem_name" "$CORPUS_DIR"/*/ME.md 2>/dev/null; then
+    # Source tracking: skip if we've already processed this file at this mtime
+    source_key="$slug/$fname"
+    file_mtime="$(get_mtime "$mem_file")"
+    if is_already_processed "$source_key" "$file_mtime"; then
       continue
     fi
 
     # Read full content
     mem_content="$(cat "$mem_file")"
+
+    # Track this source for marking after successful processing
+    echo "$source_key $file_mtime" >> "$CANDIDATES_FILE.sources"
 
     # Append to candidates
     {
@@ -185,6 +184,12 @@ fi
 
 if [[ -z "$json_content" ]] || [[ "$json_content" == "[]" ]]; then
   log "No cross-project entries identified"
+  # Still mark sources as processed so we don't re-scan them
+  if [[ -f "$CANDIDATES_FILE.sources" ]]; then
+    while IFS=' ' read -r src_key src_mtime; do
+      mark_processed "$src_key" "$src_mtime"
+    done < "$CANDIDATES_FILE.sources"
+  fi
   exit 0
 fi
 
@@ -226,6 +231,15 @@ for i in $(seq 0 $((entry_count - 1))); do
 
   log "Created $category/$filename"
 done
+
+# ---------------------------------------------------------------------------
+# Mark processed sources
+# ---------------------------------------------------------------------------
+if [[ -f "$CANDIDATES_FILE.sources" ]]; then
+  while IFS=' ' read -r src_key src_mtime; do
+    mark_processed "$src_key" "$src_mtime"
+  done < "$CANDIDATES_FILE.sources"
+fi
 
 # ---------------------------------------------------------------------------
 # Rebuild indexes
