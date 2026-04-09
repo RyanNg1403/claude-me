@@ -59,7 +59,7 @@ Requires: `node >=18`, `jq`, `claude` CLI
 | `clm status` | Corpus stats and system health |
 | `clm note "..."` | Add a preference note |
 | `clm note "..." --now` | Add + process immediately |
-| `clm note "..." --detach` | Add + process in background |
+| `clm note "..." --now --detach` | Add + process in background |
 | `clm install` | Set up hook + symlink + corpus |
 | `clm uninstall` | Remove hook + symlink |
 

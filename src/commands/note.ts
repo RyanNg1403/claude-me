@@ -17,16 +17,17 @@ export default class Note extends Command {
   static examples = [
     '<%= config.bin %> note "always run tests before committing"',
     '<%= config.bin %> note "I prefer concise responses" --now',
-    '<%= config.bin %> note "no trailing summaries" --detach',
+    '<%= config.bin %> note "no trailing summaries" --now --detach',
   ]
 
   static flags = {
     detach: Flags.boolean({
-      description: 'Process immediately in the background (non-blocking)',
+      description: 'Run extraction in background (use with --now)',
       default: false,
+      dependsOn: ['now'],
     }),
     now: Flags.boolean({
-      description: 'Process the note immediately (blocks until done)',
+      description: 'Process the note immediately',
       default: false,
     }),
   }
@@ -40,7 +41,7 @@ export default class Note extends Command {
 
     this.log(`Note saved: ${notePath}`)
 
-    if (flags.detach) {
+    if (flags.now && flags.detach) {
       const scriptPath = join(SCRIPTS_DIR, 'extract.sh')
       const child = spawn('bash', [scriptPath, '--notes-only'], {
         detached: true,

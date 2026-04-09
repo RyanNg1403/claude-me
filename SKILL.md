@@ -58,11 +58,11 @@ Add a preference note to be processed on next sync:
 
 ```bash
 clm note "always run tests before committing"
-clm note "always run tests before committing" --now      # blocks until processed
-clm note "always run tests before committing" --detach   # processes in background
+clm note "always run tests before committing" --now            # blocks until processed
+clm note "always run tests before committing" --now --detach   # processes in background
 ```
 
-Use `--detach` when calling from within a Claude Code session to avoid blocking. Notes are evaluated critically by Haiku — not blindly added. If a note contradicts an existing corpus entry, the old entry is updated or deleted.
+Without `--now`, the note is just saved to disk (instant). With `--now`, add `--detach` to avoid blocking the session. Notes are evaluated critically by Haiku — not blindly added. If a note contradicts an existing corpus entry, the old entry is updated or deleted.
 
 ### Status Mode (`/me-agent status`)
 
