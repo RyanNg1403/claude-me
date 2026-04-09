@@ -299,9 +299,7 @@ rebuild_top_index() {
   local me_file="$CORPUS_DIR/ME.md"
 
   {
-    echo "# claude-me"
-    echo ""
-    echo "> Cross-project preferences, patterns, and behaviors accumulated from Claude Code usage."
+    echo "# claude-me corpus"
     echo ""
 
     for subfolder in "$CORPUS_DIR"/*/; do
@@ -318,7 +316,7 @@ rebuild_top_index() {
         name="$(get_frontmatter_field "$f" "name")"
         desc="$(get_frontmatter_field "$f" "description")"
         fname="$(basename "$f")"
-        entries+=("- [$name]($subfolder_name/$fname) — $desc")
+        entries+=("- $subfolder_name/$fname — $desc")
         total=$((total + 1))
       done
 
