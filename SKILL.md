@@ -29,7 +29,7 @@ Load the user's preference corpus to adapt your responses.
 Extract cross-project preferences from all active Claude Code memory folders:
 
 ```bash
-claude-me sync
+clm sync
 ```
 
 Report what was extracted: how many projects scanned, how many new entries added, and which categories they landed in.
@@ -39,7 +39,7 @@ Report what was extracted: how many projects scanned, how many new entries added
 Merge duplicates, resolve contradictions, prune project-specific leaks (like Claude Code's `/dream`):
 
 ```bash
-claude-me consolidate
+clm consolidate
 ```
 
 Report what changed: entries merged, deleted, moved, or updated.
@@ -49,7 +49,7 @@ Report what changed: entries merged, deleted, moved, or updated.
 Show accumulated Haiku API cost summary:
 
 ```bash
-claude-me costs
+clm costs
 ```
 
 ### Status Mode (`/me-agent status`)
@@ -57,7 +57,7 @@ claude-me costs
 Show corpus stats and system status:
 
 ```bash
-claude-me status
+clm status
 ```
 
 ## Corpus Structure
@@ -83,6 +83,6 @@ Each topic file uses markdown with YAML frontmatter (name, description) — same
 
 - The corpus is project-agnostic — it captures patterns that span across projects
 - Entries are extracted from Claude Code's own project memory folders (piggybacking on CC's extraction/consolidation)
-- Extraction runs automatically via SessionEnd hook, or manually via `/me-agent sync` or `claude-me sync`
-- Consolidation runs every 24 hours (configurable) or manually via `/me-agent consolidate` or `claude-me consolidate`
+- Extraction runs automatically via SessionEnd hook, or manually via `/me-agent sync` or `clm sync`
+- Consolidation runs every 24 hours (configurable) or manually via `/me-agent consolidate` or `clm consolidate`
 - Corpus and logs live at `~/.claude/me-agent/`, separate from the skill repo

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "author": "Nguyễn Thuận Phát",
   "bin": {
-    "claude-me": "./bin/run.js"
+    "clm": "./bin/run.js"
   },
   "bugs": "https://github.com/RyanNg1403/claude-me/issues",
   "dependencies": {
@@ -45,7 +45,7 @@
   "main": "dist/index.js",
   "type": "module",
   "oclif": {
-    "bin": "claude-me",
+    "bin": "clm",
     "dirname": "claude-me",
     "commands": "./dist/commands",
     "plugins": [
