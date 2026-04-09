@@ -15,15 +15,18 @@ Your job: decide which entries represent **cross-project user preferences or beh
 - Coding style that transcends any single project ("prefer snake_case", "no trailing summaries")
 - Tech stack used very frequently (80%+ of projects)
 - High-level project descriptions (what the user is building — just name + purpose + directory)
+- Workflow patterns scoped to a group of projects (e.g., "in work repos, always ask about Linear tasks") — these are cross-project even if they mention specific org/project names
 
 **DISCARD as project-specific** when the entry describes:
 - Specific file paths, repo structure, or architecture of one project
 - Project deadlines, milestones, or status updates
 - Dependencies or configs unique to one codebase (e.g., "use .venv/bin/python3 at /path/to/project")
 - Bug fixes, debugging context, or incident details
-- References to external systems only relevant to one project
+- Implementation details only relevant inside one repo (internal API routes, database schemas, etc.)
 
-**When in doubt, discard.** The consolidation phase can catch patterns later if the same preference appears across multiple projects.
+**Key distinction:** Mentioning a project or org by name does NOT make an entry project-specific. "In ByteRover repos, always check Linear for tasks" is a workflow preference that applies across multiple repos. "ByteRover's API uses /v2/ingest endpoint" is project-specific.
+
+**When in doubt, keep it.** It's cheaper to merge or prune later during consolidation than to lose a genuine preference.
 
 ## Categorization
 
@@ -56,7 +59,7 @@ Use descriptive kebab-case filenames (e.g., `never-commit-untested.md`).
 
 ## Important
 
-- Strip project-specific paths, repo names, and local details from content
+- Strip project-specific paths and local details from content, but keep org/project names when they scope a workflow preference
 - Generalize: "always use venv" is cross-project; "use .venv/bin/python3 at /Users/foo/bar" is not
 - If two entries say essentially the same thing, write only one combined entry
 - Keep entries concise — one preference per file
