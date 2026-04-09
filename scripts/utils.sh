@@ -18,6 +18,7 @@ QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
 PROCESSED_FILE="$DATA_DIR/.processed"
 NOTES_DIR="$DATA_DIR/notes"
+QUESTIONS_FILE="$DATA_DIR/pending-questions.json"
 COSTS_FILE="$DATA_DIR/costs.csv"
 
 # ---------------------------------------------------------------------------
@@ -480,6 +481,29 @@ collect_notes() {
 
     NOTE_COUNT=$((NOTE_COUNT + 1))
   done
+}
+
+# ---------------------------------------------------------------------------
+# Pending interview questions
+# ---------------------------------------------------------------------------
+
+# Returns the number of pending interview questions (0 if none)
+pending_question_count() {
+  if [[ ! -f "$QUESTIONS_FILE" ]]; then
+    echo 0
+    return
+  fi
+  jq 'length' "$QUESTIONS_FILE" 2>/dev/null || echo 0
+}
+
+# Print a notification if there are pending questions
+notify_pending_questions() {
+  local count
+  count="$(pending_question_count)"
+  if [[ "$count" -gt 0 ]]; then
+    echo ""
+    echo "  $count interview question(s) pending — run 'clm interview' or '/me-agent interview'"
+  fi
 }
 
 # ---------------------------------------------------------------------------

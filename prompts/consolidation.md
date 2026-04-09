@@ -10,7 +10,7 @@ IMPORTANT: Act immediately — do NOT ask for confirmation or approval. You are 
 
 1. **Merge duplicates**: If two entries describe the same preference (even in different words or categories), merge them into one. Keep the richer content and the better category. Delete the weaker file.
 
-2. **Resolve contradictions**: If entries conflict, keep the newer one (based on context clues or dates mentioned). Update the surviving file with a brief note about the evolution if relevant.
+2. **Resolve contradictions**: If entries genuinely conflict and you cannot determine which is correct, **do NOT silently resolve them**. Instead, add the conflict to the interview questions file (see below). Only resolve a contradiction yourself if one entry is clearly outdated or superseded.
 
 3. **Prune project-specific leaks**: If an entry is clearly about one specific project (contains project-specific paths, configs, or context that doesn't generalize), delete it.
 
@@ -35,6 +35,30 @@ IMPORTANT: Act immediately — do NOT ask for confirmation or approval. You are 
 - **Create a new merged file**: Use Write, then delete the originals
 
 Do NOT modify any ME.md files — those are indexes rebuilt automatically after you finish.
+
+## Interview Questions
+
+When you encounter situations that need user input, write a JSON file called `pending-questions.json` in the working directory. This file will be shown to the user later.
+
+Generate questions for:
+- **Contradictions** you cannot confidently resolve
+- **Ambiguous entries** where the user's intent is unclear
+- **Stale entries** that haven't been reinforced and may be outdated
+
+Format:
+```json
+[
+  {
+    "id": "unique-slug",
+    "type": "conflict|ambiguous|stale",
+    "question": "Human-readable question for the user",
+    "context": "Brief explanation of what you found",
+    "entries": ["category/filename.md", "category/other.md"]
+  }
+]
+```
+
+Only generate questions when genuinely uncertain. If everything is clear, do not create the file.
 
 ## Important
 

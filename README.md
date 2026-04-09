@@ -48,6 +48,7 @@ Requires: `node >=18`, `jq`, `claude` CLI
 | `/me-agent costs` | Show accumulated API costs |
 | `/me-agent status` | Corpus stats and system health |
 | `/me-agent note "..."` | Add a preference note |
+| `/me-agent interview` | Answer pending preference questions |
 
 ### As a CLI
 
@@ -60,6 +61,7 @@ Requires: `node >=18`, `jq`, `claude` CLI
 | `clm note "..."` | Add a preference note |
 | `clm note "..." --now` | Add + process immediately |
 | `clm note "..." --now --detach` | Add + process in background |
+| `clm interview` | Answer pending preference questions |
 | `clm install` | Set up hook + symlink + corpus |
 | `clm uninstall` | Remove hook + symlink |
 

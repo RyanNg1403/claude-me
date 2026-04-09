@@ -352,6 +352,7 @@ done
 rebuild_top_index
 
 log "Extraction complete"
+notify_pending_questions
 
 # ---------------------------------------------------------------------------
 # Check if consolidation is due

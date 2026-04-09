@@ -1,7 +1,7 @@
 ---
 name: me-agent
 description: Personal interaction wiki — cross-project preferences and behaviors from Claude Code usage. Use when adapting to user preferences, checking interaction style, or when user asks to sync/update their profile.
-argument-hint: "[sync|consolidate|costs|status|note \"...\"]"
+argument-hint: "[sync|consolidate|costs|status|note \"...\"|interview]"
 user-invocable: true
 ---
 
@@ -61,6 +61,16 @@ clm note "always run tests before committing" --now --detach   # processes in ba
 ```
 
 Without `--now`, the note is just saved to disk (instant). With `--now`, add `--detach` to avoid blocking the session.
+
+### Interview Mode (`/me-agent interview`)
+
+Present pending interview questions to the user and process their answers. Questions are generated during consolidation when Haiku encounters conflicts or ambiguities it cannot resolve alone.
+
+1. Read `~/.claude/me-agent/pending-questions.json`
+2. If no questions, tell the user there are no pending questions
+3. Present each question conversationally — show the question, context, and related entries
+4. For each answer the user gives, run: `clm note "Re: <question> — <answer>" --now --detach`
+5. After all questions are answered, delete the processed questions from the file
 
 ### Status Mode (`/me-agent status`)
 

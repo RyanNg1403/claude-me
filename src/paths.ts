@@ -22,6 +22,9 @@ export const CORPUS_DIR = join(DATA_DIR, 'corpus')
 /** Notes directory */
 export const NOTES_DIR = join(DATA_DIR, 'notes')
 
+/** Pending interview questions */
+export const QUESTIONS_FILE = join(DATA_DIR, 'pending-questions.json')
+
 /** Costs CSV file */
 export const COSTS_FILE = join(DATA_DIR, 'costs.csv')
 

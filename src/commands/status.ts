@@ -1,7 +1,7 @@
 import {Command} from '@oclif/core'
 import {readdirSync, readFileSync, statSync, existsSync} from 'node:fs'
 import {join} from 'node:path'
-import {CORPUS_DIR, DATA_DIR, COSTS_FILE, LOG_FILE} from '../paths.js'
+import {CORPUS_DIR, DATA_DIR, COSTS_FILE, LOG_FILE, QUESTIONS_FILE} from '../paths.js'
 
 export default class Status extends Command {
   static description = 'Show corpus stats and system status'
@@ -71,6 +71,16 @@ export default class Status extends Command {
         }
         this.log(`  Total API cost:        $${totalCost.toFixed(4)}`)
       }
+    }
+
+    // Pending interview questions
+    if (existsSync(QUESTIONS_FILE)) {
+      try {
+        const questions = JSON.parse(readFileSync(QUESTIONS_FILE, 'utf-8'))
+        if (Array.isArray(questions) && questions.length > 0) {
+          this.log(`\n  ⚠ ${questions.length} interview question(s) pending — run 'clm interview'`)
+        }
+      } catch { /* ignore parse errors */ }
     }
 
     this.log('\n' + '='.repeat(50))

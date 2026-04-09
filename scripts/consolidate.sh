@@ -169,6 +169,14 @@ for category in interaction-style rules patterns projects; do
   done
 done
 
+# Move pending interview questions if haiku generated them
+QUESTIONS_FILE="$DATA_DIR/pending-questions.json"
+if [[ -f "$STAGING_DIR/pending-questions.json" ]]; then
+  mv "$STAGING_DIR/pending-questions.json" "$QUESTIONS_FILE"
+  question_count="$(jq 'length' "$QUESTIONS_FILE" 2>/dev/null || echo 0)"
+  log "Generated $question_count interview question(s)"
+fi
+
 rm -rf "$STAGING_DIR"
 
 # ---------------------------------------------------------------------------
@@ -180,3 +188,4 @@ done
 rebuild_top_index
 
 log "Consolidation applied changes to $file_count file corpus"
+notify_pending_questions
