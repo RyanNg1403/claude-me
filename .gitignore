@@ -1,3 +1,9 @@
+# Node.js
+node_modules/
+dist/
+oclif.manifest.json
+tsconfig.tsbuildinfo
+
 # Runtime data (lives at ~/.claude/me-agent/, not in repo)
 logs/
 .queue

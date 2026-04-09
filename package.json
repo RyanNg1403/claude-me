@@ -1,0 +1,63 @@
+{
+  "name": "claude-me",
+  "description": "Cross-project persona wiki for Claude Code — learns how you work, not what you build",
+  "version": "0.1.0",
+  "author": "Nguyễn Thuận Phát",
+  "bin": {
+    "claude-me": "./bin/run.js"
+  },
+  "bugs": "https://github.com/RyanNg1403/claude-me/issues",
+  "dependencies": {
+    "@oclif/core": "^4",
+    "@oclif/plugin-help": "^6"
+  },
+  "devDependencies": {
+    "@types/node": "^18",
+    "oclif": "^4",
+    "shx": "^0.3.3",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "./bin",
+    "./dist",
+    "./scripts",
+    "./prompts",
+    "./corpus",
+    "./config.json",
+    "./install.sh",
+    "./uninstall.sh",
+    "./SKILL.md",
+    "./oclif.manifest.json"
+  ],
+  "homepage": "https://github.com/RyanNg1403/claude-me",
+  "keywords": [
+    "claude-code",
+    "claude",
+    "ai-memory",
+    "developer-tools",
+    "persona",
+    "preferences"
+  ],
+  "license": "MIT",
+  "main": "dist/index.js",
+  "type": "module",
+  "oclif": {
+    "bin": "claude-me",
+    "dirname": "claude-me",
+    "commands": "./dist/commands",
+    "plugins": [
+      "@oclif/plugin-help"
+    ],
+    "topicSeparator": " "
+  },
+  "repository": "RyanNg1403/claude-me",
+  "scripts": {
+    "build": "shx rm -rf dist && tsc -b",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "prepack": "oclif manifest"
+  },
+  "types": "dist/index.d.ts"
+}

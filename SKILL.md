@@ -1,7 +1,7 @@
 ---
 name: me-agent
 description: Personal interaction wiki — cross-project preferences and behaviors from Claude Code usage. Use when adapting to user preferences, checking interaction style, or when user asks to sync/update their profile.
-argument-hint: "[sync|consolidate|costs]"
+argument-hint: "[sync|consolidate|costs|status]"
 user-invocable: true
 ---
 
@@ -26,33 +26,39 @@ Load the user's preference corpus to adapt your responses.
 
 ### Sync Mode (`/me-agent sync`)
 
-Trigger extraction from all active project memory folders:
+Extract cross-project preferences from all active Claude Code memory folders:
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/extract.sh --all-active
+claude-me sync
 ```
 
 Report what was extracted: how many projects scanned, how many new entries added, and which categories they landed in.
 
 ### Consolidate Mode (`/me-agent consolidate`)
 
-Trigger corpus consolidation — the equivalent of Claude Code's `/dream`. Merges duplicates, resolves contradictions, prunes project-specific leaks:
+Merge duplicates, resolve contradictions, prune project-specific leaks (like Claude Code's `/dream`):
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/consolidate.sh --force
+claude-me consolidate
 ```
 
 Report what changed: entries merged, deleted, moved, or updated.
 
 ### Costs Mode (`/me-agent costs`)
 
-Show accumulated cost summary:
+Show accumulated Haiku API cost summary:
 
 ```bash
-bash ${CLAUDE_SKILL_DIR}/scripts/costs.sh
+claude-me costs
 ```
 
-Shows total cost, today's cost, this month's cost, average per call, and daily breakdown.
+### Status Mode (`/me-agent status`)
+
+Show corpus stats and system status:
+
+```bash
+claude-me status
+```
 
 ## Corpus Structure
 
@@ -77,6 +83,6 @@ Each topic file uses markdown with YAML frontmatter (name, description) — same
 
 - The corpus is project-agnostic — it captures patterns that span across projects
 - Entries are extracted from Claude Code's own project memory folders (piggybacking on CC's extraction/consolidation)
-- Extraction runs automatically via SessionEnd hook, or manually via `/me-agent sync`
-- Consolidation runs every 24 hours (configurable) or manually via `/me-agent consolidate`
+- Extraction runs automatically via SessionEnd hook, or manually via `/me-agent sync` or `claude-me sync`
+- Consolidation runs every 24 hours (configurable) or manually via `/me-agent consolidate` or `claude-me consolidate`
 - Corpus and logs live at `~/.claude/me-agent/`, separate from the skill repo
