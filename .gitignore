@@ -1,0 +1,10 @@
+# Runtime data (lives at ~/.claude/me-agent/, not in repo)
+logs/
+.queue
+
+# Local report
+REPORT.md
+
+# OS files
+.DS_Store
+corpus/.consolidate-lock

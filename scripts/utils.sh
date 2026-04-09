@@ -1,0 +1,283 @@
+#!/bin/bash
+# me-agent shared utilities
+# Sourced by extract.sh, consolidate.sh, and hook-handler.sh
+
+set -euo pipefail
+
+# Resolve the me-agent root directory (parent of scripts/)
+ME_AGENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CONFIG_FILE="$ME_AGENT_DIR/config.json"
+CLAUDE_HOME="${CLAUDE_HOME:-$HOME/.claude}"
+
+# User data lives outside the repo, in a stable location
+DATA_DIR="$CLAUDE_HOME/me-agent"
+CORPUS_DIR="$DATA_DIR/corpus"
+LOG_DIR="$DATA_DIR/logs"
+LOG_FILE="$LOG_DIR/me-agent.log"
+QUEUE_FILE="$DATA_DIR/.queue"
+LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+log() {
+  mkdir -p "$LOG_DIR"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >> "$LOG_FILE"
+  if [[ "$(get_config_value debug)" == "true" ]]; then
+    echo "[me-agent] $*" >&2
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+get_config_value() {
+  local key="$1"
+  if command -v jq &>/dev/null; then
+    jq -r ".$key // empty" "$CONFIG_FILE" 2>/dev/null
+  else
+    # Fallback: python json parser
+    python3 -c "import json,sys; d=json.load(open('$CONFIG_FILE')); print(d.get('$key',''))" 2>/dev/null
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Path utilities
+# ---------------------------------------------------------------------------
+
+# Replicate Claude Code's sanitizePath: replace all non-alphanumeric chars with '-'
+compute_slug() {
+  local path="$1"
+  echo "$path" | sed 's/[^a-zA-Z0-9]/-/g'
+}
+
+# Get the memory directory for a given project working directory
+get_memory_dir() {
+  local cwd="$1"
+  local slug
+  slug="$(compute_slug "$cwd")"
+  echo "$CLAUDE_HOME/projects/$slug/memory"
+}
+
+# Get the projects base directory
+get_projects_dir() {
+  echo "$CLAUDE_HOME/projects"
+}
+
+# ---------------------------------------------------------------------------
+# Project discovery
+# ---------------------------------------------------------------------------
+
+# List active project directories (those with recent sessions)
+# Returns project slugs (directory names under ~/.claude/projects/)
+get_active_projects() {
+  local freshness_days
+  freshness_days="$(get_config_value project_freshness_days)"
+  freshness_days="${freshness_days:-14}"
+
+  local projects_dir
+  projects_dir="$(get_projects_dir)"
+
+  if [[ ! -d "$projects_dir" ]]; then
+    return
+  fi
+
+  local excluded
+  excluded="$(get_config_value excluded_projects)"
+
+  for project_dir in "$projects_dir"/*/; do
+    [[ -d "$project_dir" ]] || continue
+    local slug
+    slug="$(basename "$project_dir")"
+
+    # Skip excluded projects
+    if [[ -n "$excluded" ]] && echo "$excluded" | grep -q "$slug"; then
+      continue
+    fi
+
+    # Check freshness: any file modified within freshness_days
+    local memory_dir="$project_dir/memory"
+    if [[ ! -d "$memory_dir" ]]; then
+      continue
+    fi
+
+    # Check if any session file (*.jsonl) or memory file was modified recently
+    local recent_file
+    recent_file="$(find "$project_dir" -maxdepth 1 -name '*.jsonl' -mtime -"$freshness_days" -print -quit 2>/dev/null)"
+    if [[ -z "$recent_file" ]]; then
+      recent_file="$(find "$memory_dir" -name '*.md' -mtime -"$freshness_days" -print -quit 2>/dev/null)"
+    fi
+
+    if [[ -n "$recent_file" ]]; then
+      echo "$slug"
+    fi
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Lock file helpers (mtime-based timer + PID mutex, like CC's dreaming)
+# ---------------------------------------------------------------------------
+
+# Check if consolidation interval has passed
+is_consolidation_due() {
+  local interval_hours
+  interval_hours="$(get_config_value consolidation_interval_hours)"
+  interval_hours="${interval_hours:-24}"
+
+  if [[ ! -f "$LOCK_FILE" ]]; then
+    return 0  # No lock file = never consolidated = due
+  fi
+
+  local lock_mtime now interval_seconds elapsed
+  lock_mtime="$(stat -f '%m' "$LOCK_FILE" 2>/dev/null || stat -c '%Y' "$LOCK_FILE" 2>/dev/null)"
+  now="$(date +%s)"
+  interval_seconds=$((interval_hours * 3600))
+  elapsed=$((now - lock_mtime))
+
+  if [[ $elapsed -ge $interval_seconds ]]; then
+    return 0  # Due
+  else
+    return 1  # Not due
+  fi
+}
+
+# Try to acquire the consolidation lock. Returns 0 on success, 1 if held.
+acquire_lock() {
+  if [[ -f "$LOCK_FILE" ]]; then
+    local holder_pid
+    holder_pid="$(cat "$LOCK_FILE" 2>/dev/null)"
+    if [[ -n "$holder_pid" ]] && kill -0 "$holder_pid" 2>/dev/null; then
+      log "Lock held by PID $holder_pid, skipping"
+      return 1  # Lock held by running process
+    fi
+    # Stale lock (process gone), take over
+    log "Removing stale lock from PID $holder_pid"
+  fi
+
+  # Write our PID
+  echo $$ > "$LOCK_FILE"
+
+  # Verify we got it (write-then-verify for race conditions)
+  local written_pid
+  written_pid="$(cat "$LOCK_FILE" 2>/dev/null)"
+  if [[ "$written_pid" != "$$" ]]; then
+    log "Lost lock race, skipping"
+    return 1
+  fi
+
+  return 0
+}
+
+# Release the lock and update mtime to record consolidation time
+release_lock() {
+  if [[ -f "$LOCK_FILE" ]]; then
+    local holder_pid
+    holder_pid="$(cat "$LOCK_FILE" 2>/dev/null)"
+    if [[ "$holder_pid" == "$$" ]]; then
+      # Update mtime to now (records when consolidation completed)
+      touch "$LOCK_FILE"
+      # Clear PID but keep file (mtime is the timer)
+      echo "" > "$LOCK_FILE"
+    fi
+  fi
+}
+
+# Rollback lock mtime on failure (so next attempt doesn't wait full interval)
+rollback_lock() {
+  if [[ -f "$LOCK_FILE" ]]; then
+    # Set mtime back to epoch so consolidation is immediately due again
+    touch -t 197001010000 "$LOCK_FILE" 2>/dev/null || true
+    echo "" > "$LOCK_FILE"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Memory file parsing
+# ---------------------------------------------------------------------------
+
+# Extract a frontmatter field from a memory file
+# Usage: get_frontmatter_field "file.md" "type"
+get_frontmatter_field() {
+  local file="$1"
+  local field="$2"
+  sed -n '/^---$/,/^---$/p' "$file" 2>/dev/null | grep "^${field}:" | head -1 | sed "s/^${field}:[[:space:]]*//"
+}
+
+# Get content after frontmatter
+get_content() {
+  local file="$1"
+  sed '1,/^---$/d' "$file" 2>/dev/null | sed '1,/^---$/d'
+}
+
+# ---------------------------------------------------------------------------
+# ME.md index management
+# ---------------------------------------------------------------------------
+
+# Rebuild a subfolder's ME.md index from its topic files
+rebuild_subfolder_index() {
+  local subfolder="$1"
+  local subfolder_name
+  subfolder_name="$(basename "$subfolder")"
+  local me_file="$subfolder/ME.md"
+
+  local category_desc=""
+  case "$subfolder_name" in
+    interaction-style) category_desc="How you interact with Claude Code — verbosity, planning style, feedback patterns" ;;
+    projects)          category_desc="High-level overview of your active projects and what you're building" ;;
+    rules)             category_desc="Rules and corrections you consistently apply across projects" ;;
+    patterns)          category_desc="Recurring decision patterns, workflow habits, and tool preferences" ;;
+    *)                 category_desc="$subfolder_name entries" ;;
+  esac
+
+  {
+    echo "# $subfolder_name"
+    echo ""
+    echo "> $category_desc"
+    echo ""
+
+    local has_entries=false
+    for f in "$subfolder"/*.md; do
+      [[ -f "$f" ]] || continue
+      [[ "$(basename "$f")" == "ME.md" ]] && continue
+      has_entries=true
+      local name desc
+      name="$(get_frontmatter_field "$f" "name")"
+      desc="$(get_frontmatter_field "$f" "description")"
+      local fname
+      fname="$(basename "$f")"
+      echo "- [$name]($fname) — $desc"
+    done
+
+    if [[ "$has_entries" == "false" ]]; then
+      echo "<!-- No entries yet -->"
+    fi
+  } > "$me_file"
+}
+
+# Rebuild the top-level corpus ME.md from all subfolders
+rebuild_top_index() {
+  local me_file="$CORPUS_DIR/ME.md"
+
+  {
+    echo "# Me Agent"
+    echo ""
+    echo "> Cross-project preferences, patterns, and behaviors accumulated from Claude Code usage."
+    echo ""
+
+    for subfolder in "$CORPUS_DIR"/*/; do
+      [[ -d "$subfolder" ]] || continue
+      local subfolder_name
+      subfolder_name="$(basename "$subfolder")"
+
+      # Count topic files (exclude ME.md)
+      local count=0
+      for f in "$subfolder"/*.md; do
+        [[ -f "$f" ]] || continue
+        [[ "$(basename "$f")" == "ME.md" ]] && continue
+        count=$((count + 1))
+      done
+
+      echo "- [$subfolder_name/]($subfolder_name/ME.md) — $count entries"
+    done
+  } > "$me_file"
+}

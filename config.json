@@ -1,0 +1,9 @@
+{
+  "consolidation_interval_hours": 24,
+  "extraction_model": "haiku",
+  "consolidation_model": "haiku",
+  "project_freshness_days": 14,
+  "excluded_projects": [],
+  "min_sessions_for_extraction": 1,
+  "debug": false
+}
