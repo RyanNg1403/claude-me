@@ -3,15 +3,7 @@ name: me-agent
 description: Personal interaction wiki — cross-project preferences, patterns, and behaviors from Claude Code usage
 when_to_use: When adapting to the user's preferences, checking their interaction style, or when they ask to sync/update their profile. Also auto-invoke when the user's request would benefit from knowing their established patterns.
 argument-hint: "[sync|consolidate|costs]"
-arguments: action
 user-invocable: true
-allowed-tools:
-  - Read
-  - Glob
-  - Grep
-  - Bash
-  - Write
-  - Edit
 ---
 
 # Me Agent
