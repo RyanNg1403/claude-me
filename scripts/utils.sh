@@ -52,11 +52,42 @@ compute_slug() {
   echo "$path" | sed 's/[^a-zA-Z0-9]/-/g'
 }
 
+# Find the actual project directory for a given cwd.
+# Computes the slug and checks if it exists. If not (e.g., slug was truncated
+# by CC for long paths), falls back to scanning directory names for a prefix match.
+find_project_dir() {
+  local cwd="$1"
+  local projects_dir
+  projects_dir="$(get_projects_dir)"
+  local slug
+  slug="$(compute_slug "$cwd")"
+
+  # Exact match first
+  if [[ -d "$projects_dir/$slug" ]]; then
+    echo "$slug"
+    return
+  fi
+
+  # Prefix match fallback (handles CC's truncation + hash for long paths)
+  for d in "$projects_dir"/*/; do
+    [[ -d "$d" ]] || continue
+    local dname
+    dname="$(basename "$d")"
+    if [[ "$dname" == "$slug"* ]]; then
+      echo "$dname"
+      return
+    fi
+  done
+}
+
 # Get the memory directory for a given project working directory
 get_memory_dir() {
   local cwd="$1"
   local slug
-  slug="$(compute_slug "$cwd")"
+  slug="$(find_project_dir "$cwd")"
+  if [[ -z "$slug" ]]; then
+    return
+  fi
   echo "$CLAUDE_HOME/projects/$slug/memory"
 }
 
@@ -91,8 +122,8 @@ get_active_projects() {
     local slug
     slug="$(basename "$project_dir")"
 
-    # Skip excluded projects
-    if [[ -n "$excluded" ]] && echo "$excluded" | grep -q "$slug"; then
+    # Skip excluded projects (exact match, not substring)
+    if [[ -n "$excluded" ]] && echo "$excluded" | grep -qw "$slug"; then
       continue
     fi
 

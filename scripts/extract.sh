@@ -1,7 +1,7 @@
 #!/bin/bash
 # me-agent extraction pipeline
 # Reads Claude Code project memory files, filters for cross-project patterns,
-# and uses haiku to classify and write to the corpus.
+# and uses haiku (with tool access) to classify and write to the corpus.
 #
 # Usage:
 #   extract.sh --from-hook     Process latest queue entry (single project)
@@ -44,21 +44,22 @@ case "$MODE" in
       log "No queue file, nothing to process"
       exit 0
     fi
-    # Read last entry from queue
-    local_entry="$(tail -1 "$QUEUE_FILE")"
-    if [[ -z "$local_entry" ]]; then
-      exit 0
-    fi
-    local_cwd="$(echo "$local_entry" | jq -r '.cwd // empty' 2>/dev/null)"
-    if [[ -z "$local_cwd" ]]; then
-      log "Queue entry missing cwd, skipping"
-      # Remove processed entry
-      sed -i '' '$d' "$QUEUE_FILE" 2>/dev/null || sed -i '$d' "$QUEUE_FILE" 2>/dev/null
-      exit 0
-    fi
-    PROJECT_SLUGS+=("$(compute_slug "$local_cwd")")
-    # Remove processed entry
-    sed -i '' '$d' "$QUEUE_FILE" 2>/dev/null || sed -i '$d' "$QUEUE_FILE" 2>/dev/null
+
+    # Atomic claim: move queue to a temp file, process from there
+    CLAIMED_QUEUE="$(mktemp)"
+    mv "$QUEUE_FILE" "$CLAIMED_QUEUE" 2>/dev/null || { log "No queue to claim"; exit 0; }
+
+    # Read all entries from claimed queue
+    while IFS= read -r entry; do
+      [[ -z "$entry" ]] && continue
+      local_cwd="$(echo "$entry" | jq -r '.cwd // empty' 2>/dev/null)"
+      if [[ -n "$local_cwd" ]]; then
+        local resolved
+        resolved="$(find_project_dir "$local_cwd")"
+        [[ -n "$resolved" ]] && PROJECT_SLUGS+=("$resolved")
+      fi
+    done < "$CLAIMED_QUEUE"
+    rm -f "$CLAIMED_QUEUE"
     ;;
   all)
     while IFS= read -r slug; do
@@ -66,7 +67,13 @@ case "$MODE" in
     done < <(get_active_projects)
     ;;
   single)
-    PROJECT_SLUGS+=("$(compute_slug "$TARGET_CWD")")
+    local resolved
+    resolved="$(find_project_dir "$TARGET_CWD")"
+    if [[ -n "$resolved" ]]; then
+      PROJECT_SLUGS+=("$resolved")
+    else
+      PROJECT_SLUGS+=("$(compute_slug "$TARGET_CWD")")
+    fi
     ;;
 esac
 
@@ -75,15 +82,17 @@ if [[ ${#PROJECT_SLUGS[@]} -eq 0 ]]; then
   exit 0
 fi
 
+# Deduplicate slugs (multiple sessions in same project)
+PROJECT_SLUGS=($(printf '%s\n' "${PROJECT_SLUGS[@]}" | sort -u))
+
 log "Extracting from ${#PROJECT_SLUGS[@]} project(s)"
 
 # ---------------------------------------------------------------------------
 # Collect candidate memory entries
 # ---------------------------------------------------------------------------
 CANDIDATES_FILE="$(mktemp)"
-PROMPT_FILE=""
-RESPONSE_FILE=""
-trap 'rm -f "$CANDIDATES_FILE" "$CANDIDATES_FILE.sources" "$PROMPT_FILE" "$RESPONSE_FILE"' EXIT
+SOURCES_FILE="$(mktemp)"
+trap 'rm -f "$CANDIDATES_FILE" "$SOURCES_FILE"' EXIT
 
 candidate_count=0
 
@@ -123,8 +132,8 @@ for slug in "${PROJECT_SLUGS[@]}"; do
     # Read full content
     mem_content="$(cat "$mem_file")"
 
-    # Track this source for marking after successful processing
-    echo "$source_key $file_mtime" >> "$CANDIDATES_FILE.sources"
+    # Track this source for marking after processing
+    echo "$source_key $file_mtime" >> "$SOURCES_FILE"
 
     # Append to candidates
     {
@@ -145,100 +154,53 @@ fi
 log "Found $candidate_count new candidate(s), running extraction"
 
 # ---------------------------------------------------------------------------
-# Build prompt and call haiku
+# Build prompt and call haiku with tool access
 # ---------------------------------------------------------------------------
-PROMPT_FILE="$(mktemp)"
-RESPONSE_FILE="$(mktemp)"
-
 extraction_model="$(get_config_value extraction_model)"
 extraction_model="${extraction_model:-haiku}"
 
-{
-  cat "$ME_AGENT_DIR/prompts/extraction.md"
-  echo ""
-  echo "---"
-  echo ""
-  echo "## Memory Entries to Analyze"
-  echo ""
-  cat "$CANDIDATES_FILE"
-} > "$PROMPT_FILE"
+PROMPT="$(cat "$ME_AGENT_DIR/prompts/extraction.md")
 
-log "Calling claude -p --model $extraction_model"
+---
 
-if ! claude -p --model "$extraction_model" < "$PROMPT_FILE" > "$RESPONSE_FILE" 2>/dev/null; then
+Corpus directory: $CORPUS_DIR
+
+Write new corpus entries directly using the Write tool. Each file goes in the appropriate category subdirectory:
+- $CORPUS_DIR/interaction-style/  (how the user communicates with Claude Code)
+- $CORPUS_DIR/rules/              (explicit rules and constraints)
+- $CORPUS_DIR/patterns/           (workflow habits, tool preferences)
+- $CORPUS_DIR/projects/           (high-level project overviews)
+
+Use kebab-case filenames (e.g., never-commit-untested.md).
+Each file must have YAML frontmatter with name and description fields.
+Only write files inside $CORPUS_DIR. Do not modify any other files.
+
+If no entries qualify as cross-project, just say so — don't create any files.
+
+---
+
+## Memory Entries to Analyze
+
+$(cat "$CANDIDATES_FILE")"
+
+log "Calling claude -p --model $extraction_model (with tools)"
+
+if ! echo "$PROMPT" | claude -p \
+  --model "$extraction_model" \
+  --tools "Read,Write,Bash" \
+  --dangerously-skip-permissions \
+  >> "$LOG_FILE" 2>&1; then
   log "ERROR: claude -p failed"
   exit 1
 fi
 
 # ---------------------------------------------------------------------------
-# Parse response and write corpus files
+# Mark processed sources (regardless of whether haiku created files)
 # ---------------------------------------------------------------------------
-
-# Extract JSON from response (handle potential markdown fences)
-json_content="$(sed -n '/^\[/,/^\]/p' "$RESPONSE_FILE")"
-
-if [[ -z "$json_content" ]]; then
-  # Try extracting from code fences
-  json_content="$(sed -n '/```json/,/```/p' "$RESPONSE_FILE" | sed '1d;$d')"
-fi
-
-if [[ -z "$json_content" ]] || [[ "$json_content" == "[]" ]]; then
-  log "No cross-project entries identified"
-  # Still mark sources as processed so we don't re-scan them
-  if [[ -f "$CANDIDATES_FILE.sources" ]]; then
-    while IFS=' ' read -r src_key src_mtime; do
-      mark_processed "$src_key" "$src_mtime"
-    done < "$CANDIDATES_FILE.sources"
-  fi
-  exit 0
-fi
-
-# Parse each entry and write files
-entry_count="$(echo "$json_content" | jq 'length' 2>/dev/null || echo 0)"
-log "Writing $entry_count corpus entries"
-
-for i in $(seq 0 $((entry_count - 1))); do
-  category="$(echo "$json_content" | jq -r ".[$i].category")"
-  filename="$(echo "$json_content" | jq -r ".[$i].filename")"
-  name="$(echo "$json_content" | jq -r ".[$i].frontmatter.name")"
-  description="$(echo "$json_content" | jq -r ".[$i].frontmatter.description")"
-  content="$(echo "$json_content" | jq -r ".[$i].content")"
-
-  # Validate category
-  case "$category" in
-    interaction-style|rules|patterns|projects) ;;
-    *) log "Unknown category '$category' for $filename, skipping"; continue ;;
-  esac
-
-  target_dir="$CORPUS_DIR/$category"
-  target_file="$target_dir/$filename"
-
-  # Skip if file already exists
-  if [[ -f "$target_file" ]]; then
-    log "File $target_file already exists, skipping"
-    continue
-  fi
-
-  # Write the corpus entry
-  {
-    echo "---"
-    echo "name: $name"
-    echo "description: $description"
-    echo "---"
-    echo ""
-    echo "$content"
-  } > "$target_file"
-
-  log "Created $category/$filename"
-done
-
-# ---------------------------------------------------------------------------
-# Mark processed sources
-# ---------------------------------------------------------------------------
-if [[ -f "$CANDIDATES_FILE.sources" ]]; then
+if [[ -f "$SOURCES_FILE" ]]; then
   while IFS=' ' read -r src_key src_mtime; do
     mark_processed "$src_key" "$src_mtime"
-  done < "$CANDIDATES_FILE.sources"
+  done < "$SOURCES_FILE"
 fi
 
 # ---------------------------------------------------------------------------

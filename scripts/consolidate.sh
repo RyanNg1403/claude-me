@@ -1,6 +1,6 @@
 #!/bin/bash
 # me-agent consolidation pipeline
-# Reads all corpus files, uses haiku to merge/dedup/prune, then applies changes.
+# Gives haiku direct tool access to read, merge, and clean up corpus files.
 #
 # Usage:
 #   consolidate.sh            Check interval, run if due
@@ -49,36 +49,18 @@ cleanup() {
     release_lock
     log "Consolidation complete, lock released"
   fi
-  rm -f "$MANIFEST_FILE" "$PROMPT_FILE" "$RESPONSE_FILE"
 }
 trap cleanup EXIT
 
 # ---------------------------------------------------------------------------
-# Build manifest of all corpus files
+# Count corpus files (skip if empty)
 # ---------------------------------------------------------------------------
-MANIFEST_FILE="$(mktemp)"
-PROMPT_FILE="$(mktemp)"
-RESPONSE_FILE="$(mktemp)"
-
 file_count=0
-
 for subfolder in "$CORPUS_DIR"/*/; do
   [[ -d "$subfolder" ]] || continue
-  category="$(basename "$subfolder")"
-
   for topic_file in "$subfolder"/*.md; do
     [[ -f "$topic_file" ]] || continue
     [[ "$(basename "$topic_file")" == "ME.md" ]] && continue
-
-    fname="$(basename "$topic_file")"
-    content="$(cat "$topic_file")"
-
-    {
-      echo "---FILE: $category/$fname---"
-      echo "$content"
-      echo ""
-    } >> "$MANIFEST_FILE"
-
     file_count=$((file_count + 1))
   done
 done
@@ -91,129 +73,50 @@ fi
 log "Consolidating $file_count corpus file(s)"
 
 # ---------------------------------------------------------------------------
-# Build prompt and call model
+# Build prompt and call haiku with tool access
 # ---------------------------------------------------------------------------
 consolidation_model="$(get_config_value consolidation_model)"
 consolidation_model="${consolidation_model:-haiku}"
 
-{
-  cat "$ME_AGENT_DIR/prompts/consolidation.md"
-  echo ""
-  echo "---"
-  echo ""
-  echo "## Current Corpus Contents"
-  echo ""
-  cat "$MANIFEST_FILE"
-} > "$PROMPT_FILE"
+PROMPT="$(cat "$ME_AGENT_DIR/prompts/consolidation.md")
 
-log "Calling claude -p --model $consolidation_model"
+---
 
-if ! claude -p --model "$consolidation_model" < "$PROMPT_FILE" > "$RESPONSE_FILE" 2>/dev/null; then
+Corpus directory: $CORPUS_DIR
+
+You have direct tool access. Use Read to examine corpus files, Write to update them, and Bash to delete or move files.
+
+Steps:
+1. Read all .md files in each subdirectory of $CORPUS_DIR (skip ME.md files — those are indexes, not entries)
+2. Analyze for duplicates, contradictions, and misplaced entries
+3. Use Write to update files, Bash (rm) to delete files, Bash (mv) to move files between categories
+4. Only modify files inside $CORPUS_DIR. Do not touch any other files.
+
+Category subdirectories:
+- $CORPUS_DIR/interaction-style/
+- $CORPUS_DIR/rules/
+- $CORPUS_DIR/patterns/
+- $CORPUS_DIR/projects/
+
+If no changes are needed, just say so."
+
+log "Calling claude -p --model $consolidation_model (with tools)"
+
+if ! echo "$PROMPT" | claude -p \
+  --model "$consolidation_model" \
+  --tools "Read,Write,Edit,Bash,Glob" \
+  --dangerously-skip-permissions \
+  >> "$LOG_FILE" 2>&1; then
   log "ERROR: claude -p failed"
   exit 1
 fi
 
 # ---------------------------------------------------------------------------
-# Parse response and apply actions
-# ---------------------------------------------------------------------------
-
-# Extract JSON from response
-json_content="$(cat "$RESPONSE_FILE")"
-
-# Strip markdown fences if present
-json_content="$(echo "$json_content" | sed -n '/^{/,/^}/p')"
-if [[ -z "$json_content" ]]; then
-  json_content="$(sed -n '/```json/,/```/p' "$RESPONSE_FILE" | sed '1d;$d')"
-fi
-
-if [[ -z "$json_content" ]]; then
-  log "Could not parse consolidation response"
-  exit 1
-fi
-
-action_count="$(echo "$json_content" | jq '.actions | length' 2>/dev/null || echo 0)"
-
-if [[ "$action_count" -eq 0 ]]; then
-  log "No consolidation changes needed"
-  exit 0
-fi
-
-log "Applying $action_count consolidation action(s)"
-
-for i in $(seq 0 $((action_count - 1))); do
-  action="$(echo "$json_content" | jq -r ".actions[$i].action")"
-
-  case "$action" in
-    delete)
-      path="$(echo "$json_content" | jq -r ".actions[$i].path")"
-      reason="$(echo "$json_content" | jq -r ".actions[$i].reason")"
-      target="$CORPUS_DIR/$path"
-      if [[ -f "$target" ]]; then
-        rm "$target"
-        log "Deleted $path: $reason"
-      fi
-      ;;
-
-    update)
-      path="$(echo "$json_content" | jq -r ".actions[$i].path")"
-      name="$(echo "$json_content" | jq -r ".actions[$i].frontmatter.name")"
-      description="$(echo "$json_content" | jq -r ".actions[$i].frontmatter.description")"
-      content="$(echo "$json_content" | jq -r ".actions[$i].content")"
-      target="$CORPUS_DIR/$path"
-      {
-        echo "---"
-        echo "name: $name"
-        echo "description: $description"
-        echo "---"
-        echo ""
-        echo "$content"
-      } > "$target"
-      log "Updated $path"
-      ;;
-
-    create)
-      path="$(echo "$json_content" | jq -r ".actions[$i].path")"
-      name="$(echo "$json_content" | jq -r ".actions[$i].frontmatter.name")"
-      description="$(echo "$json_content" | jq -r ".actions[$i].frontmatter.description")"
-      content="$(echo "$json_content" | jq -r ".actions[$i].content")"
-      target="$CORPUS_DIR/$path"
-      target_dir="$(dirname "$target")"
-      mkdir -p "$target_dir"
-      {
-        echo "---"
-        echo "name: $name"
-        echo "description: $description"
-        echo "---"
-        echo ""
-        echo "$content"
-      } > "$target"
-      log "Created $path"
-      ;;
-
-    move)
-      from="$(echo "$json_content" | jq -r ".actions[$i].from")"
-      to="$(echo "$json_content" | jq -r ".actions[$i].to")"
-      src="$CORPUS_DIR/$from"
-      dst="$CORPUS_DIR/$to"
-      if [[ -f "$src" ]]; then
-        mkdir -p "$(dirname "$dst")"
-        mv "$src" "$dst"
-        log "Moved $from → $to"
-      fi
-      ;;
-
-    *)
-      log "Unknown action: $action"
-      ;;
-  esac
-done
-
-# ---------------------------------------------------------------------------
-# Rebuild all indexes
+# Rebuild all indexes (haiku modified files, we rebuild the ME.md indexes)
 # ---------------------------------------------------------------------------
 for subfolder in "$CORPUS_DIR"/*/; do
   [[ -d "$subfolder" ]] && rebuild_subfolder_index "$subfolder"
 done
 rebuild_top_index
 
-log "Consolidation applied $action_count action(s)"
+log "Consolidation applied changes to $file_count file corpus"

@@ -72,7 +72,7 @@ if [[ ! -f "$SETTINGS_FILE" ]]; then
   echo '{}' > "$SETTINGS_FILE"
 fi
 
-if grep -q "me-agent" "$SETTINGS_FILE" 2>/dev/null; then
+if grep -q "me-agent/scripts/hook-handler.sh" "$SETTINGS_FILE" 2>/dev/null; then
   echo "  SessionEnd hook already registered"
 else
   if command -v jq &>/dev/null; then
