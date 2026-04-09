@@ -74,7 +74,7 @@ Set up claude-me: skill symlink, SessionEnd hook, corpus directory, CLAUDE.md hi
 
 ```bash
 clm install              # CLAUDE.md hint in ~/.claude/CLAUDE.md (global)
-clm install --project    # CLAUDE.md hint in ./CLAUDE.md (current project)
+clm install --local      # CLAUDE.md hint in ./CLAUDE.md (current project)
 ```
 
 ## clm uninstall
