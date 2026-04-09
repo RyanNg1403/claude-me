@@ -97,9 +97,12 @@ EOF
     jq --argjson hook "$HOOK_JSON" '
       .hooks //= {} |
       .hooks.SessionEnd //= [] |
-      .hooks.SessionEnd += $hook.hooks.SessionEnd
+      .hooks.SessionEnd += $hook.hooks.SessionEnd |
+      .env //= {} |
+      .env.CLAUDE_CODE_SESSIONEND_HOOKS_TIMEOUT_MS //= "3000"
     ' "$SETTINGS_FILE" > "$tmp" && mv "$tmp" "$SETTINGS_FILE"
     echo "  Registered SessionEnd hook in settings.json"
+    echo "  Set SessionEnd timeout to 3s"
   else
     echo "  WARNING: jq not found. Please manually add the SessionEnd hook to $SETTINGS_FILE:"
     echo "  {\"hooks\":{\"SessionEnd\":[{\"hooks\":[{\"type\":\"command\",\"command\":\"$HOOK_COMMAND\"}]}]}}"
