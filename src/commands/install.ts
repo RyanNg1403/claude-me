@@ -21,7 +21,8 @@ export default class Install extends Command {
   async run(): Promise<void> {
     const {flags} = await this.parse(Install)
     this.log(`Installing from: ${PROJECT_ROOT}`)
-    const args = flags.global ? ['--global'] : []
+    const args = ['--cwd', process.cwd()]
+    if (flags.global) args.push('--global')
     runScript('../install.sh', args)
   }
 }
