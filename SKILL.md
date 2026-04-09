@@ -1,7 +1,6 @@
 ---
 name: me-agent
-description: Personal interaction wiki — cross-project preferences, patterns, and behaviors from Claude Code usage
-when_to_use: When adapting to the user's preferences, checking their interaction style, or when they ask to sync/update their profile. Also auto-invoke when the user's request would benefit from knowing their established patterns.
+description: Personal interaction wiki — cross-project preferences and behaviors from Claude Code usage. Use when adapting to user preferences, checking interaction style, or when user asks to sync/update their profile.
 argument-hint: "[sync|consolidate|costs]"
 user-invocable: true
 ---
