@@ -11,16 +11,11 @@ user-invocable: true
 
 ### Read Mode (no arguments)
 
-Load the user's preference corpus to adapt your responses.
+The top-level index (`~/.claude/claude-me/corpus/ME.md`) is already in your context via CLAUDE.md. Use it to identify relevant entries, then read specific topic files for full detail:
 
-1. Read `~/.claude/claude-me/corpus/ME.md` to get the top-level index
-2. Based on the current conversation context, read relevant subfolder ME.md files:
-   - `~/.claude/claude-me/corpus/interaction-style/ME.md` — how the user communicates
-   - `~/.claude/claude-me/corpus/rules/ME.md` — rules the user enforces
-   - `~/.claude/claude-me/corpus/patterns/ME.md` — workflow habits and preferences
-   - `~/.claude/claude-me/corpus/projects/ME.md` — what the user is building
-3. Read specific topic files listed in the subfolder indexes if they're relevant
-4. Apply this knowledge naturally — don't announce it, just adapt
+1. Check the index (already in context) for entries relevant to the current conversation
+2. Read specific topic files at `~/.claude/claude-me/corpus/<category>/<file>.md`
+3. Apply this knowledge naturally — don't announce it, just adapt
 
 ### Sync Mode (`/claude-me sync`)
 
