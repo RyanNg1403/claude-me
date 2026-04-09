@@ -88,7 +88,8 @@ if [[ "$MODE" != "notes" ]]; then
   esac
 
   if [[ ${#PROJECT_SLUGS[@]} -gt 0 ]]; then
-    mapfile -t PROJECT_SLUGS < <(printf '%s\n' "${PROJECT_SLUGS[@]}" | sort -u)
+    # shellcheck disable=SC2207 # mapfile requires bash 4+, macOS ships 3.2
+    PROJECT_SLUGS=($(printf '%s\n' "${PROJECT_SLUGS[@]}" | sort -u))
     log "Scanning ${#PROJECT_SLUGS[@]} project(s) for CC memories"
 
     for slug in "${PROJECT_SLUGS[@]}"; do
