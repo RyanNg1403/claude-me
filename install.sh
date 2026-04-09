@@ -3,16 +3,16 @@
 # Creates symlink to ~/.claude/skills/, sets up data directory, registers SessionEnd hook
 #
 # Usage:
-#   install.sh            Add CLAUDE.md hint to current project (./CLAUDE.md)
-#   install.sh --global   Add CLAUDE.md hint to ~/.claude/CLAUDE.md (all projects)
+#   install.sh            Add CLAUDE.md hint to ~/.claude/CLAUDE.md (all projects)
+#   install.sh --project  Add CLAUDE.md hint to current project (./CLAUDE.md) instead
 
 set -euo pipefail
 
-GLOBAL=false
+PROJECT=false
 CALLER_CWD=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --global)    GLOBAL=true; shift ;;
+    --project)   PROJECT=true; shift ;;
     --cwd)       CALLER_CWD="$2"; shift 2 ;;
     *)           echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -137,11 +137,11 @@ read -r -d '' CLAUDE_MD_HINT << 'HINT' || true
 Frequently look up ~/.claude/me-agent/corpus/ME.md before important decisions or implementations to align with user preferences. Run /me-agent for full context.
 HINT
 
-if [[ "$GLOBAL" == "true" ]]; then
-  CLAUDE_MD_FILE="$CLAUDE_HOME/CLAUDE.md"
-else
+if [[ "$PROJECT" == "true" ]]; then
   # Use caller's cwd if provided (oclif runs scripts from scripts/ dir)
   CLAUDE_MD_FILE="${CALLER_CWD:-.}/CLAUDE.md"
+else
+  CLAUDE_MD_FILE="$CLAUDE_HOME/CLAUDE.md"
 fi
 
 if [[ -f "$CLAUDE_MD_FILE" ]] && grep -qF "me-agent/corpus/ME.md" "$CLAUDE_MD_FILE" 2>/dev/null; then

@@ -7,13 +7,13 @@ export default class Install extends Command {
 
   static examples = [
     '<%= config.bin %> install',
-    '<%= config.bin %> install --global',
+    '<%= config.bin %> install --project',
   ]
 
   static flags = {
-    global: Flags.boolean({
-      char: 'g',
-      description: 'Add CLAUDE.md hint to ~/.claude/CLAUDE.md (all projects) instead of ./CLAUDE.md',
+    project: Flags.boolean({
+      char: 'p',
+      description: 'Add CLAUDE.md hint to ./CLAUDE.md (current project) instead of ~/.claude/CLAUDE.md',
       default: false,
     }),
   }
@@ -22,7 +22,7 @@ export default class Install extends Command {
     const {flags} = await this.parse(Install)
     this.log(`Installing from: ${PROJECT_ROOT}`)
     const args = ['--cwd', process.cwd()]
-    if (flags.global) args.push('--global')
+    if (flags.project) args.push('--project')
     runScript('../install.sh', args)
   }
 }
