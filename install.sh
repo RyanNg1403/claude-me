@@ -131,7 +131,11 @@ fi
 # ---------------------------------------------------------------------------
 # 5. Add CLAUDE.md hint
 # ---------------------------------------------------------------------------
-CLAUDE_MD_HINT="Frequently look up ~/.claude/me-agent/corpus/ME.md before important decisions or implementations to align with user preferences. Run /me-agent for full context."
+read -r -d '' CLAUDE_MD_HINT << 'HINT' || true
+## User Preferences (claude-me)
+
+Frequently look up ~/.claude/me-agent/corpus/ME.md before important decisions or implementations to align with user preferences. Run /me-agent for full context.
+HINT
 
 if [[ "$GLOBAL" == "true" ]]; then
   CLAUDE_MD_FILE="$CLAUDE_HOME/CLAUDE.md"
