@@ -107,8 +107,8 @@ Edit `config.json`:
 ## Uninstall
 
 ```bash
-clm uninstall          # remove hook + symlink, keep data
-clm uninstall --purge  # also delete corpus + logs
+clm uninstall          # confirmation prompt, then removes everything
+clm uninstall --yes    # skip confirmation
 ```
 
 ## License
