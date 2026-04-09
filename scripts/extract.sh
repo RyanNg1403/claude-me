@@ -271,6 +271,7 @@ if ! echo "$USER_PROMPT" | claude -p \
   --tools "$HAIKU_TOOLS" \
   --system-prompt-file "$SYSTEM_PROMPT_FILE" \
   --dangerously-skip-permissions \
+  --no-session-persistence \
   2>&1 | tee -a "$LOG_FILE" > "$RESPONSE_FILE"; then
   log "ERROR: claude -p failed"
   exit 1

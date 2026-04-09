@@ -129,6 +129,7 @@ if ! echo "$USER_MSG" | claude -p \
   --tools "Read,Write,Edit,Bash,Glob" \
   --system-prompt-file "$SYSTEM_PROMPT_FILE" \
   --dangerously-skip-permissions \
+  --no-session-persistence \
   2>&1 | tee -a "$LOG_FILE" > "$RESPONSE_FILE"; then
   log "ERROR: claude -p failed"
   rm -rf "$STAGING_DIR" "$RESPONSE_FILE"
