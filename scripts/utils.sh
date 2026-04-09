@@ -448,16 +448,18 @@ write_note() {
   local fname="${ts}-${slug}.md"
   local fpath="$NOTES_DIR/$fname"
 
-  cat > "$fpath" <<EOF
----
-name: User note
-description: $text
-source: clm-note
-created: $ts
----
-
-$text
-EOF
+  # Write file line by line to avoid heredoc delimiter collision
+  # and quote YAML description to handle colons/special chars
+  {
+    echo "---"
+    echo "name: User note"
+    echo "description: \"$(echo "$text" | tr '\n' ' ' | sed 's/"/\\"/g')\""
+    echo "source: clm-note"
+    echo "created: $ts"
+    echo "---"
+    echo ""
+    echo "$text"
+  } > "$fpath"
 
   echo "$fpath"
 }
