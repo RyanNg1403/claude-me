@@ -7,8 +7,6 @@ user-invocable: true
 
 # Me Agent
 
-A cross-project persona wiki that accumulates your preferences, patterns, and behaviors from Claude Code usage.
-
 ## How to Use
 
 ### Read Mode (no arguments)
@@ -62,7 +60,7 @@ clm note "always run tests before committing" --now            # blocks until pr
 clm note "always run tests before committing" --now --detach   # processes in background
 ```
 
-Without `--now`, the note is just saved to disk (instant). With `--now`, add `--detach` to avoid blocking the session. Notes are evaluated critically by Haiku — not blindly added. If a note contradicts an existing corpus entry, the old entry is updated or deleted.
+Without `--now`, the note is just saved to disk (instant). With `--now`, add `--detach` to avoid blocking the session.
 
 ### Status Mode (`/me-agent status`)
 
@@ -89,13 +87,4 @@ The corpus lives at `~/.claude/me-agent/corpus/` (outside the skill repo — you
     ME.md + topic files
 ```
 
-Each topic file uses markdown with YAML frontmatter (name, description) — same format as Claude Code memory files.
-
-## Notes
-
-- The corpus is project-agnostic — it captures patterns that span across projects
-- Entries are extracted from Claude Code's own project memory folders (piggybacking on CC's extraction/consolidation)
-- Extraction runs automatically via SessionEnd hook, or manually via `/me-agent sync` or `clm sync`
-- Consolidation runs every 24 hours (configurable) or manually via `/me-agent consolidate` or `clm consolidate`
-- Notes (`clm note "..."`) let users add preferences directly without relying on CC's memory system
-- Corpus, notes, and logs live at `~/.claude/me-agent/`, separate from the skill repo
+Each topic file has YAML frontmatter (`name`, `description`) and markdown content with optional `**Why:**` and `**How to apply:**` sections.
