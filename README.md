@@ -22,7 +22,7 @@ graph LR
     B -->|new entries?| C["Haiku classifies<br/>+ writes corpus"]
     C -->|every 24h| D["Haiku consolidates<br/>(merge, dedup, prune)"]
     D -->|conflicts?| E["clm interview"]
-    C -->|@include ME.md| F["Always in CC context"]
+    C -.->|auto-loaded| F["Always in CC context"]
 ```
 
 Two input paths: CC memories are extracted automatically via SessionEnd hook; `clm note` lets you add preferences directly. Both are filtered with source tracking (free) — Haiku is only called when there's genuinely new material. The corpus index is auto-loaded into every CC session via `@include`.
