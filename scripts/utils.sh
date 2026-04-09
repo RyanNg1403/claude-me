@@ -249,9 +249,6 @@ get_content() {
 # ME.md index management
 # ---------------------------------------------------------------------------
 
-# Max lines per subfolder ME.md (header takes ~4, rest are entries)
-MAX_SUBFOLDER_INDEX_LINES=30
-
 # Rebuild a subfolder's ME.md index from its topic files
 rebuild_subfolder_index() {
   local subfolder="$1"
@@ -268,40 +265,26 @@ rebuild_subfolder_index() {
     *)                 category_desc="$subfolder_name entries" ;;
   esac
 
-  local total_entries=0
-  local entries=()
-  for f in "$subfolder"/*.md; do
-    [[ -f "$f" ]] || continue
-    [[ "$(basename "$f")" == "ME.md" ]] && continue
-    local name desc fname
-    name="$(get_frontmatter_field "$f" "name")"
-    desc="$(get_frontmatter_field "$f" "description")"
-    fname="$(basename "$f")"
-    entries+=("- [$name]($fname) — $desc")
-    total_entries=$((total_entries + 1))
-  done
-
-  # Header takes 4 lines, remaining budget is for entries
-  local max_entries=$((MAX_SUBFOLDER_INDEX_LINES - 4))
-
   {
     echo "# $subfolder_name"
     echo ""
     echo "> $category_desc"
     echo ""
 
-    if [[ $total_entries -eq 0 ]]; then
+    local has_entries=false
+    for f in "$subfolder"/*.md; do
+      [[ -f "$f" ]] || continue
+      [[ "$(basename "$f")" == "ME.md" ]] && continue
+      has_entries=true
+      local name desc fname
+      name="$(get_frontmatter_field "$f" "name")"
+      desc="$(get_frontmatter_field "$f" "description")"
+      fname="$(basename "$f")"
+      echo "- [$name]($fname) — $desc"
+    done
+
+    if [[ "$has_entries" == "false" ]]; then
       echo "<!-- No entries yet -->"
-    else
-      local shown=0
-      for entry in "${entries[@]}"; do
-        if [[ $shown -ge $max_entries ]]; then
-          echo "- ... and $((total_entries - shown)) more (run /claude-me to see all)"
-          break
-        fi
-        echo "$entry"
-        shown=$((shown + 1))
-      done
     fi
   } > "$me_file"
 }
