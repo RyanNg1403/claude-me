@@ -325,7 +325,7 @@ rebuild_top_index() {
       local shown=0
       for entry in "${entries[@]}"; do
         if [[ $shown -ge $MAX_ENTRIES_PER_CATEGORY ]]; then
-          echo "- ... and $((total - shown)) more"
+          echo "- ... and $((total - shown)) more (see $subfolder_name/ME.md)"
           break
         fi
         echo "$entry"
