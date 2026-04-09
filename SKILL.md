@@ -45,7 +45,7 @@ Report what was extracted: how many projects scanned, how many new entries added
 
 ### Consolidate Mode (`/me-agent consolidate`)
 
-Trigger corpus consolidation (merge duplicates, resolve contradictions, prune):
+Trigger corpus consolidation — the equivalent of Claude Code's `/dream`. Merges duplicates, resolves contradictions, prunes project-specific leaks:
 
 ```bash
 bash ${CLAUDE_SKILL_DIR}/scripts/consolidate.sh --force

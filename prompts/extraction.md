@@ -36,6 +36,8 @@ Assign each kept entry to exactly one category:
 
 ## How to Write Entries
 
+IMPORTANT: Write files immediately using the Write tool. Do NOT ask for confirmation or approval — you are running in a non-interactive pipeline. Just classify and write.
+
 For each entry you decide to keep, use the Write tool to create a file in the appropriate category subdirectory. The file path and format will be provided in the prompt.
 
 Each file must have this format:

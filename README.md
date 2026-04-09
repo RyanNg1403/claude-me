@@ -2,7 +2,7 @@
 
 > A cross-project persona wiki for [Claude Code](https://docs.anthropic.com/en/docs/claude-code). Learns how you work — not what you build.
 
-Claude Code's memory is project-scoped. You correct it in one project ("don't commit without asking"), but the next project doesn't know. **me-agent** fixes this by extracting cross-project preferences from your existing Claude Code memories into a single, portable corpus.
+Claude Code's memory is project-scoped. You correct it in one project ("don't commit without asking"), but the next project doesn't know. **claude-me** fixes this by extracting cross-project preferences from your existing Claude Code memories into a single, portable corpus.
 
 ## How It Works
 
@@ -13,20 +13,19 @@ graph TD
     B --> C{Session ends}
     C --> D["hook-handler.sh
     Queues session info, spawns background job
-    (exits in < 1.5s)"]
+    (exits in < 3s)"]
 
     D --> E["extract.sh (background, async)"]
 
     E --> E1["1. Read project memory files"]
-    E1 --> E2["2. Filter for user/feedback types (free)"]
-    E2 --> E3["3. Diff against existing corpus (free)"]
-    E3 --> E4["4. Haiku classifies new entries (cheap)"]
-    E4 --> E5["5. Write to corpus/"]
+    E1 --> E2["2. Filter by type + source tracking (free)"]
+    E2 --> E3{"New candidates?"}
+    E3 -- No --> E3N["Exit — zero cost"]
+    E3 -- Yes --> E4["3. Haiku with tool access classifies + writes corpus files directly"]
 
-    E5 --> F{24h since last consolidation?}
+    E4 --> F{24h since last consolidation?}
     F -- Yes --> G["consolidate.sh
-    Merge duplicates, resolve contradictions,
-    prune project-specific leaks"]
+    Haiku reads, merges, prunes corpus via tools"]
     F -- No --> H["Done"]
     G --> H
 
@@ -37,26 +36,26 @@ graph TD
     style E fill:#1e3a5f,stroke:#38bdf8,color:#e2e8f0
     style E1 fill:#1a2e1a,stroke:#4ade80,color:#e2e8f0
     style E2 fill:#1a2e1a,stroke:#4ade80,color:#e2e8f0
-    style E3 fill:#1a2e1a,stroke:#4ade80,color:#e2e8f0
+    style E3 fill:#312e81,stroke:#818cf8,color:#e2e8f0
+    style E3N fill:#5a5a5a,stroke:#888,color:#fff
     style E4 fill:#3b1a1a,stroke:#f97316,color:#e2e8f0
-    style E5 fill:#1a2e1a,stroke:#4ade80,color:#e2e8f0
     style F fill:#312e81,stroke:#818cf8,color:#e2e8f0
     style G fill:#3b1a1a,stroke:#f97316,color:#e2e8f0
     style H fill:#1a1a2e,stroke:#6366f1,color:#e2e8f0
 ```
 
-> **Key insight:** We never mine raw transcripts. Claude Code already spent the tokens to extract and consolidate project memories. We read those pre-refined `.md` files, filter with grep (zero tokens), and only call Haiku on the small filtered set.
+> **Key insight:** We never mine raw transcripts. Claude Code already spent the tokens to extract and consolidate project memories. We read those pre-refined `.md` files, filter with source tracking (zero tokens), and only give Haiku the new candidates with direct tool access to write corpus files.
 
 ## Cost
 
-| Scenario | Input | Output | Cost |
-|----------|-------|--------|------|
-| **Bootstrap** (first run, all projects) | ~18K tokens | ~4K tokens | **~$0.03** |
-| **Per session** (steady state) | ~1K tokens | ~400 tokens | **~$0.002** |
-| **Consolidation** (daily) | ~1.6K tokens | ~500 tokens | **~$0.003** |
-| **Monthly** (10 sessions/day) | — | — | **~$0.69** |
+| Scenario | Cost |
+|----------|------|
+| **Per session** (steady state, ~3 candidates) | **~$0.002** |
+| **Consolidation** (daily) | **~$0.003** |
+| **Monthly** (10 sessions/day) | **~$0.69** |
+| **No new memories** (most sessions) | **$0.00** |
 
-All calls use Haiku ($0.80/M input, $4.00/M output). Most work is done by bash scripts at zero token cost.
+All calls use Haiku ($0.80/M input, $4.00/M output). Most work is bash scripts at zero token cost. If no new memories are found, haiku is never called.
 
 ## Install
 
@@ -70,6 +69,7 @@ This will:
 1. Symlink the skill to `~/.claude/skills/me-agent/`
 2. Create `~/.claude/me-agent/` for your personal data (corpus, logs)
 3. Register a `SessionEnd` hook in `~/.claude/settings.json`
+4. Set SessionEnd hook timeout to 3s
 
 Your preferences are stored at `~/.claude/me-agent/corpus/`, separate from the repo — never committed to git.
 
@@ -81,9 +81,22 @@ Your preferences are stored at `~/.claude/me-agent/corpus/`, separate from the r
 |---------|--------------|
 | `/me-agent` | Load your preference corpus into context |
 | `/me-agent sync` | Extract from all active projects now |
-| `/me-agent consolidate` | Merge, deduplicate, prune the corpus |
+| `/me-agent consolidate` | Merge, deduplicate, prune the corpus (like CC's `/dream`) |
 
 After installation, extraction runs **automatically** when each Claude Code session ends. The corpus grows over time with no manual effort.
+
+## How Extraction Decides What's New
+
+Instead of grepping for content similarity (which misses paraphrases), claude-me tracks **which source files it has already processed** via a `.processed` manifest:
+
+| Scenario | Action |
+|----------|--------|
+| Same file, same mtime | Skip — already processed |
+| Same file, new mtime | Re-process — CC updated it |
+| New file | Process |
+| Haiku discards entry | Still marked processed — won't re-scan |
+
+This means most sessions cost zero tokens — haiku is only called when CC has genuinely new material.
 
 ## Corpus
 
@@ -135,10 +148,11 @@ bash uninstall.sh --purge  # also delete ~/.claude/me-agent/ (corpus + logs)
 
 ## Design Principles
 
-- **Claude Code native** — same markdown + frontmatter format, same progressive disclosure
+- **Claude Code native** — same markdown + frontmatter format, same progressive disclosure, haiku uses tools directly (like CC's dreaming agent)
 - **Project-agnostic** — only patterns that generalize across projects
-- **Token efficient** — piggyback on CC's extraction, grep before LLM, Haiku for everything
+- **Token efficient** — piggyback on CC's extraction, source tracking before LLM, haiku only when new material exists
 - **Transparent** — plain markdown files you can read, edit, and version control
+- **Safe** — corpus at `~/.claude/me-agent/`, separate from skills and repo. Deleting skills or the repo doesn't touch your data.
 
 ## License
 

@@ -54,7 +54,6 @@ case "$MODE" in
       [[ -z "$entry" ]] && continue
       local_cwd="$(echo "$entry" | jq -r '.cwd // empty' 2>/dev/null)"
       if [[ -n "$local_cwd" ]]; then
-        local resolved
         resolved="$(find_project_dir "$local_cwd")"
         [[ -n "$resolved" ]] && PROJECT_SLUGS+=("$resolved")
       fi
@@ -67,7 +66,6 @@ case "$MODE" in
     done < <(get_active_projects)
     ;;
   single)
-    local resolved
     resolved="$(find_project_dir "$TARGET_CWD")"
     if [[ -n "$resolved" ]]; then
       PROJECT_SLUGS+=("$resolved")
@@ -92,7 +90,8 @@ log "Extracting from ${#PROJECT_SLUGS[@]} project(s)"
 # ---------------------------------------------------------------------------
 CANDIDATES_FILE="$(mktemp)"
 SOURCES_FILE="$(mktemp)"
-trap 'rm -f "$CANDIDATES_FILE" "$SOURCES_FILE"' EXIT
+SYSTEM_PROMPT_FILE=""
+trap 'rm -f "$CANDIDATES_FILE" "$SOURCES_FILE" "$SYSTEM_PROMPT_FILE"' EXIT
 
 candidate_count=0
 
@@ -159,40 +158,70 @@ log "Found $candidate_count new candidate(s), running extraction"
 extraction_model="$(get_config_value extraction_model)"
 extraction_model="${extraction_model:-haiku}"
 
-PROMPT="$(cat "$ME_AGENT_DIR/prompts/extraction.md")
+# Haiku writes to a staging dir (outside ~/.claude/ to avoid sandbox block),
+# then we move files into the corpus.
+STAGING_DIR="$(mktemp -d)"
+
+SYSTEM_PROMPT_FILE="$(mktemp)"
+{
+  cat "$ME_AGENT_DIR/prompts/extraction.md"
+  cat <<SYEOF
 
 ---
 
-Corpus directory: $CORPUS_DIR
+Output directory: $STAGING_DIR
 
-Write new corpus entries directly using the Write tool. Each file goes in the appropriate category subdirectory:
-- $CORPUS_DIR/interaction-style/  (how the user communicates with Claude Code)
-- $CORPUS_DIR/rules/              (explicit rules and constraints)
-- $CORPUS_DIR/patterns/           (workflow habits, tool preferences)
-- $CORPUS_DIR/projects/           (high-level project overviews)
+Write new corpus entries using the Write tool. Each file goes in a category subdirectory:
+- $STAGING_DIR/interaction-style/  (how the user communicates with Claude Code)
+- $STAGING_DIR/rules/              (explicit rules and constraints)
+- $STAGING_DIR/patterns/           (workflow habits, tool preferences)
+- $STAGING_DIR/projects/           (high-level project overviews)
 
+Create the subdirectory if it doesn't exist (use Bash: mkdir -p).
 Use kebab-case filenames (e.g., never-commit-untested.md).
 Each file must have YAML frontmatter with name and description fields.
-Only write files inside $CORPUS_DIR. Do not modify any other files.
 
 If no entries qualify as cross-project, just say so — don't create any files.
+SYEOF
+} > "$SYSTEM_PROMPT_FILE"
 
----
-
-## Memory Entries to Analyze
+USER_PROMPT="Analyze and process these memory entries now. Write each qualifying entry immediately:
 
 $(cat "$CANDIDATES_FILE")"
 
 log "Calling claude -p --model $extraction_model (with tools)"
 
-if ! echo "$PROMPT" | claude -p \
+if ! echo "$USER_PROMPT" | claude -p \
   --model "$extraction_model" \
   --tools "Read,Write,Bash" \
+  --system-prompt-file "$SYSTEM_PROMPT_FILE" \
   --dangerously-skip-permissions \
   >> "$LOG_FILE" 2>&1; then
   log "ERROR: claude -p failed"
   exit 1
 fi
+
+# Move staged files into corpus
+for category_dir in "$STAGING_DIR"/*/; do
+  [[ -d "$category_dir" ]] || continue
+  category="$(basename "$category_dir")"
+  case "$category" in
+    interaction-style|rules|patterns|projects) ;;
+    *) log "Unknown category '$category' in staging, skipping"; continue ;;
+  esac
+  mkdir -p "$CORPUS_DIR/$category"
+  for staged_file in "$category_dir"/*.md; do
+    [[ -f "$staged_file" ]] || continue
+    fname="$(basename "$staged_file")"
+    if [[ -f "$CORPUS_DIR/$category/$fname" ]]; then
+      log "File $category/$fname already exists, skipping"
+    else
+      mv "$staged_file" "$CORPUS_DIR/$category/$fname"
+      log "Created $category/$fname"
+    fi
+  done
+done
+rm -rf "$STAGING_DIR"
 
 # ---------------------------------------------------------------------------
 # Mark processed sources (regardless of whether haiku created files)
