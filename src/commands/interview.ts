@@ -21,9 +21,18 @@ export default class Interview extends Command {
   static examples = [
     '<%= config.bin %> interview',
     '<%= config.bin %> interview --list',
+    '<%= config.bin %> interview --clear pr-strategy-conflict',
+    '<%= config.bin %> interview --clear-all',
   ]
 
   static flags = {
+    clear: Flags.string({
+      description: 'Clear a specific question by ID',
+    }),
+    'clear-all': Flags.boolean({
+      description: 'Clear all pending questions',
+      default: false,
+    }),
     list: Flags.boolean({
       char: 'l',
       description: 'List pending questions without opening editor',
@@ -50,6 +59,30 @@ export default class Interview extends Command {
     if (questions.length === 0) {
       this.log('No pending interview questions.')
       unlinkSync(QUESTIONS_FILE)
+      return
+    }
+
+    if (flags['clear-all']) {
+      unlinkSync(QUESTIONS_FILE)
+      this.log(`Cleared all ${questions.length} pending question(s).`)
+      return
+    }
+
+    if (flags.clear) {
+      const remaining = questions.filter(q => q.id !== flags.clear)
+      if (remaining.length === questions.length) {
+        this.log(`No question found with ID: ${flags.clear}`)
+        this.log('Available IDs: ' + questions.map(q => q.id).join(', '))
+        return
+      }
+
+      if (remaining.length > 0) {
+        writeFileSync(QUESTIONS_FILE, JSON.stringify(remaining, null, 2))
+      } else {
+        unlinkSync(QUESTIONS_FILE)
+      }
+
+      this.log(`Cleared question: ${flags.clear} (${remaining.length} remaining)`)
       return
     }
 

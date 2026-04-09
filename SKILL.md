@@ -70,7 +70,8 @@ Present pending interview questions to the user and process their answers. Quest
 2. If no questions, tell the user there are no pending questions
 3. Present each question conversationally — show the question, context, and related entries
 4. For each answer the user gives, run: `clm note "Re: <question> — <answer>" --now --detach`
-5. After all questions are answered, delete the processed questions from the file
+5. After each answer, clear it: `clm interview --clear <question-id>`
+6. After all questions are answered, or to clear all at once: `clm interview --clear-all`
 
 ### Status Mode (`/me-agent status`)
 
