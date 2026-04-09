@@ -266,9 +266,7 @@ rebuild_subfolder_index() {
   esac
 
   {
-    echo "# $subfolder_name"
-    echo ""
-    echo "> $category_desc"
+    echo "# $subfolder_name ($subfolder_name/)"
     echo ""
 
     local has_entries=false
@@ -276,11 +274,10 @@ rebuild_subfolder_index() {
       [[ -f "$f" ]] || continue
       [[ "$(basename "$f")" == "ME.md" ]] && continue
       has_entries=true
-      local name desc fname
-      name="$(get_frontmatter_field "$f" "name")"
+      local desc fname
       desc="$(get_frontmatter_field "$f" "description")"
       fname="$(basename "$f")"
-      echo "- [$name]($fname) — $desc"
+      echo "- $fname — $desc"
     done
 
     if [[ "$has_entries" == "false" ]]; then
@@ -316,13 +313,13 @@ rebuild_top_index() {
         name="$(get_frontmatter_field "$f" "name")"
         desc="$(get_frontmatter_field "$f" "description")"
         fname="$(basename "$f")"
-        entries+=("- $subfolder_name/$fname — $desc")
+        entries+=("- $fname — $desc")
         total=$((total + 1))
       done
 
       [[ $total -eq 0 ]] && continue
 
-      echo "## $subfolder_name"
+      echo "## $subfolder_name ($subfolder_name/)"
       echo ""
 
       local shown=0
