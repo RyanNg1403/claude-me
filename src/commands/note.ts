@@ -35,9 +35,12 @@ export default class Note extends Command {
   async run(): Promise<void> {
     const {args, flags} = await this.parse(Note)
 
-    // Write the note via utils.sh's write_note function
-    const writeCmd = `source "${join(SCRIPTS_DIR, 'utils.sh')}" && write_note "${args.text.replace(/"/g, '\\"')}"`
-    const notePath = execSync(writeCmd, {encoding: 'utf-8', env: {...process.env}}).trim()
+    // Pass note text via env var to avoid shell injection
+    const writeCmd = `source "${join(SCRIPTS_DIR, 'utils.sh')}" && write_note "$CLM_NOTE_TEXT"`
+    const notePath = execSync(writeCmd, {
+      encoding: 'utf-8',
+      env: {...process.env, CLM_NOTE_TEXT: args.text},
+    }).trim()
 
     this.log(`Note saved: ${notePath}`)
 

@@ -164,8 +164,8 @@ export default class Interview extends Command {
     // Feed each answer as a note
     for (const {question, answer} of answers) {
       const noteText = `Re: ${question.question} — ${answer}`
-      const writeCmd = `source "${join(SCRIPTS_DIR, 'utils.sh')}" && write_note "${noteText.replace(/"/g, '\\"')}"`
-      execSync(writeCmd, {encoding: 'utf-8', env: {...process.env}})
+      const writeCmd = `source "${join(SCRIPTS_DIR, 'utils.sh')}" && write_note "$CLM_NOTE_TEXT"`
+      execSync(writeCmd, {encoding: 'utf-8', env: {...process.env, CLM_NOTE_TEXT: noteText}})
     }
 
     // Remove answered questions, keep unanswered
