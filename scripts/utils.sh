@@ -17,6 +17,7 @@ LOG_FILE="$LOG_DIR/claude-me.log"
 # shellcheck disable=SC2034 # used by extract.sh which sources this file
 QUEUE_FILE="$DATA_DIR/.queue"
 LOCK_FILE="$CORPUS_DIR/.consolidate-lock"
+EXTRACT_LOCK_FILE="$DATA_DIR/.extract-lock"
 PROCESSED_FILE="$DATA_DIR/.processed"
 NOTES_DIR="$DATA_DIR/notes"
 QUESTIONS_FILE="$DATA_DIR/pending-questions.json"
@@ -151,7 +152,43 @@ get_active_projects() {
 }
 
 # ---------------------------------------------------------------------------
-# Lock file helpers (mtime-based timer + PID mutex, like CC's dreaming)
+# Extraction lock (PID mutex — prevents overlapping extractors)
+# ---------------------------------------------------------------------------
+
+acquire_extract_lock() {
+  if [[ -f "$EXTRACT_LOCK_FILE" ]]; then
+    local holder_pid
+    holder_pid="$(cat "$EXTRACT_LOCK_FILE" 2>/dev/null)"
+    if [[ -n "$holder_pid" ]] && kill -0 "$holder_pid" 2>/dev/null; then
+      return 1  # Lock held by running process
+    fi
+    log "Removing stale extraction lock from PID $holder_pid"
+  fi
+
+  echo $$ > "$EXTRACT_LOCK_FILE"
+
+  # Verify we got it
+  local written_pid
+  written_pid="$(cat "$EXTRACT_LOCK_FILE" 2>/dev/null)"
+  if [[ "$written_pid" != "$$" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+release_extract_lock() {
+  if [[ -f "$EXTRACT_LOCK_FILE" ]]; then
+    local holder_pid
+    holder_pid="$(cat "$EXTRACT_LOCK_FILE" 2>/dev/null)"
+    if [[ "$holder_pid" == "$$" ]]; then
+      rm -f "$EXTRACT_LOCK_FILE"
+    fi
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Consolidation lock (mtime-based timer + PID mutex, like CC's dreaming)
 # ---------------------------------------------------------------------------
 
 # Check if consolidation interval has passed

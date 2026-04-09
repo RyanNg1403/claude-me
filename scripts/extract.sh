@@ -36,12 +36,20 @@ if [[ -z "$MODE" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Acquire extraction lock
+# ---------------------------------------------------------------------------
+if ! acquire_extract_lock; then
+  log "Extraction already in progress, skipping"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
 # Collect candidates
 # ---------------------------------------------------------------------------
 CANDIDATES_FILE="$(mktemp)"
 SOURCES_FILE="$(mktemp)"
 SYSTEM_PROMPT_FILE=""
-trap 'rm -f "$CANDIDATES_FILE" "$SOURCES_FILE" "$SYSTEM_PROMPT_FILE"' EXIT
+trap 'release_extract_lock; rm -f "$CANDIDATES_FILE" "$SOURCES_FILE" "$SYSTEM_PROMPT_FILE"' EXIT
 
 candidate_count=0
 note_count=0
