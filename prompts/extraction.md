@@ -49,11 +49,21 @@ Each file must have this format:
 ---
 name: Short descriptive name
 description: One-line description under 120 chars
+created_at: 2026-04-10
+last_verified: 2026-04-10
+verify_count: 0
 ---
 
 Rewritten content for cross-project context. Remove project-specific paths/details.
 Keep the Why and How to apply structure if present.
 ```
+
+**Freshness fields (required):**
+- `created_at` and `last_verified`: set both to today's date in `YYYY-MM-DD` format. Today's date will be provided in the runtime context below.
+- `verify_count`: always start at `0` for new entries.
+- If you are **editing** an existing entry (note override mode), bump `last_verified` to today and **leave `created_at` and `verify_count` unchanged**.
+
+Don't worry if you make a small mistake on these fields — a post-process repair sweep will normalize them. But please write them correctly when you can; it saves us from drifting.
 
 Use descriptive kebab-case filenames (e.g., `never-commit-untested.md`).
 

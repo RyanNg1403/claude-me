@@ -169,6 +169,8 @@ fi
 extraction_model="$(get_config_value extraction_model)"
 extraction_model="${extraction_model:-haiku}"
 
+TODAY="$(get_today)"
+
 STAGING_DIR="$(mktemp -d)"
 
 if [[ "$HAS_NOTES" == "true" ]]; then
@@ -192,6 +194,10 @@ if [[ "$HAS_NOTES" == "true" ]]; then
     cat <<SYEOF
 
 ---
+
+## Runtime Context
+
+Today's date: $TODAY  (use this for created_at / last_verified fields)
 
 ## Note Processing (additional instructions)
 
@@ -235,6 +241,10 @@ else
     cat <<SYEOF
 
 ---
+
+## Runtime Context
+
+Today's date: $TODAY  (use this for created_at / last_verified fields)
 
 Output directory: $STAGING_DIR
 
@@ -290,15 +300,15 @@ if [[ "$HAS_NOTES" == "true" ]]; then
     corpus_cat="$CORPUS_DIR/$category"
     staging_cat="$STAGING_DIR/$category"
 
-    # Delete files that Haiku removed
+    # Soft-delete files that Haiku removed (recoverable via $TRASH_DIR)
     if [[ -d "$corpus_cat" ]]; then
       for f in "$corpus_cat"/*.md; do
         [[ -f "$f" ]] || continue
         fname="$(basename "$f")"
         [[ "$fname" == "ME.md" ]] && continue
         if [[ ! -f "$staging_cat/$fname" ]]; then
-          rm "$f"
-          log "Deleted $category/$fname (note override)"
+          soft_delete "$f"
+          log "Removed $category/$fname (note override)"
         fi
       done
     fi
@@ -355,12 +365,24 @@ if [[ -f "$SOURCES_FILE" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Self-heal freshness metadata (Option D: post-process repair)
+# Catches any drift in fields Haiku wrote — missing, malformed dates, etc.
+# ---------------------------------------------------------------------------
+bash "$SCRIPT_DIR/repair-freshness.sh" 2>>"$LOG_FILE" || log "WARNING: repair-freshness failed"
+
+# Prune old trash entries (soft-delete retention)
+cleanup_trash
+
+# ---------------------------------------------------------------------------
 # Rebuild indexes
 # ---------------------------------------------------------------------------
 for subfolder in "$CORPUS_DIR"/*/; do
   [[ -d "$subfolder" ]] && rebuild_subfolder_index "$subfolder"
 done
 rebuild_top_index
+
+# Refresh stats cache for the status line
+write_stats_cache
 
 log "Extraction complete"
 notify_pending_questions

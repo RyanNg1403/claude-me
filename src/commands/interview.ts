@@ -65,6 +65,7 @@ export default class Interview extends Command {
     if (flags['clear-all']) {
       unlinkSync(QUESTIONS_FILE)
       this.log(`Cleared all ${questions.length} pending question(s).`)
+      this.refreshStats()
       return
     }
 
@@ -83,6 +84,7 @@ export default class Interview extends Command {
       }
 
       this.log(`Cleared question: ${flags.clear} (${remaining.length} remaining)`)
+      this.refreshStats()
       return
     }
 
@@ -187,5 +189,16 @@ export default class Interview extends Command {
       stdio: 'inherit',
       env: {...process.env},
     })
+  }
+
+  private refreshStats(): void {
+    try {
+      execFileSync('bash', [join(SCRIPTS_DIR, 'refresh-stats.sh')], {
+        stdio: 'ignore',
+        env: {...process.env},
+      })
+    } catch {
+      // Stats refresh is best-effort; never block the user on it.
+    }
   }
 }

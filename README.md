@@ -41,10 +41,14 @@ Requires: `node >=18`, `jq`, `claude` CLI
 ## Quick Start
 
 ```bash
-clm sync                    # extract from all active CC projects
-clm note "prefer early returns"   # add a preference directly
-clm consolidate             # merge and deduplicate corpus
-clm status                  # corpus stats and system health
+clm sync                                # extract from all active CC projects
+clm note "prefer early returns"         # add a preference directly
+clm consolidate                         # merge and deduplicate corpus
+clm status                              # corpus stats and system health
+clm open                                # open the corpus dir in VS Code
+clm verify rules/never-commit.md        # confirm an entry is still true
+clm delete rules/old-rule.md            # soft-delete (recoverable for 7 days)
+clm daemon enable                       # opt-in: daily 9am notification of one entry
 ```
 
 As a Claude Code skill: `/claude-me`, `/claude-me sync`, `/claude-me note "..."`, etc.
@@ -70,6 +74,9 @@ Edit `config.json`:
 | `consolidation_interval_hours` | `24` | Hours between auto-consolidation |
 | `project_freshness_days` | `14` | Skip inactive projects |
 | `excluded_projects` | `[]` | Project slugs to ignore |
+| `staleness_threshold_days` | `30` | When entries count as stale for `clm glance`-style picking |
+| `trash_retention_days` | `7` | How long soft-deleted entries stay recoverable |
+| `daemon_hour` / `daemon_minute` | `9` / `0` | Daily notification fire time |
 | `debug` | `false` | Verbose logging |
 
 ## Uninstall

@@ -82,6 +82,8 @@ log "Consolidating $file_count corpus file(s)"
 consolidation_model="$(get_config_value consolidation_model)"
 consolidation_model="${consolidation_model:-haiku}"
 
+TODAY="$(get_today)"
+
 # Copy corpus to staging dir (outside ~/.claude/ to avoid sandbox block).
 # Haiku modifies the copy freely, then we diff and apply changes.
 STAGING_DIR="$(mktemp -d)"
@@ -93,6 +95,10 @@ SYSTEM_PROMPT_FILE="$(mktemp)"
   cat <<SYEOF
 
 ---
+
+## Runtime Context
+
+Today's date: $TODAY  (use this when bumping last_verified or computing merge metadata)
 
 Working directory: $STAGING_DIR
 
@@ -141,7 +147,7 @@ record_cost "consolidation" "$consolidation_model" "$input_chars" "$output_chars
 rm -f "$RESPONSE_FILE"
 
 # Apply changes: sync staging back to corpus
-# Delete files that haiku removed
+# Soft-delete files that haiku removed (recoverable via $TRASH_DIR)
 for category in interaction-style rules patterns projects; do
   corpus_cat="$CORPUS_DIR/$category"
   staging_cat="$STAGING_DIR/$category"
@@ -152,8 +158,8 @@ for category in interaction-style rules patterns projects; do
     fname="$(basename "$f")"
     [[ "$fname" == "ME.md" ]] && continue
     if [[ ! -f "$staging_cat/$fname" ]]; then
-      rm "$f"
-      log "Deleted $category/$fname"
+      soft_delete "$f"
+      log "Removed $category/$fname"
     fi
   done
 done
@@ -187,12 +193,24 @@ fi
 rm -rf "$STAGING_DIR"
 
 # ---------------------------------------------------------------------------
+# Self-heal freshness metadata (Option D: post-process repair)
+# Catches any drift from merge math, missing fields, malformed dates, etc.
+# ---------------------------------------------------------------------------
+bash "$SCRIPT_DIR/repair-freshness.sh" 2>>"$LOG_FILE" || log "WARNING: repair-freshness failed"
+
+# Prune old trash entries (soft-delete retention)
+cleanup_trash
+
+# ---------------------------------------------------------------------------
 # Rebuild all indexes (haiku modified files, we rebuild the ME.md indexes)
 # ---------------------------------------------------------------------------
 for subfolder in "$CORPUS_DIR"/*/; do
   [[ -d "$subfolder" ]] && rebuild_subfolder_index "$subfolder"
 done
 rebuild_top_index
+
+# Refresh stats cache for the status line
+write_stats_cache
 
 log "Consolidation applied changes to $file_count file corpus"
 notify_pending_questions

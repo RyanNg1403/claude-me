@@ -1,7 +1,7 @@
 ---
 name: claude-me
 description: Personal interaction wiki — cross-project preferences and behaviors from Claude Code usage. Use when adapting to user preferences, checking interaction style, or when user asks to sync/update their profile.
-argument-hint: "[sync|consolidate|costs|status|note \"...\"|interview]"
+argument-hint: "[sync|consolidate|note \"...\"|interview|verify|delete|open|daemon|costs|status]"
 user-invocable: true
 ---
 
@@ -76,6 +76,32 @@ Show corpus stats and system status:
 ```bash
 clm status
 ```
+
+### Open / Verify / Delete (single-entry actions)
+
+Direct actions on individual corpus entries — use when the user says "open my corpus", "this is still true", or "delete this rule":
+
+```bash
+clm open                                       # open corpus dir in VS Code
+clm verify rules/never-commit-untested.md      # bump last_verified + verify_count
+clm delete rules/old-rule.md                   # soft-delete (recoverable for 7 days)
+clm delete rules/old-rule.md --yes             # skip confirmation
+```
+
+Soft-deleted entries land in `~/.claude/claude-me/trash/` and auto-prune after 7 days. Recoverable via `mv` until then.
+
+### Daemon Mode (`/claude-me daemon ...`)
+
+Optional daily notification daemon. Surfaces one corpus entry per day at 9am for the user to review:
+
+```bash
+clm daemon enable    # register LaunchAgent, fire one test notification
+clm daemon disable   # unregister
+clm daemon test      # fire one notification right now
+clm daemon status    # show registration state
+```
+
+Disabled by default — the user opts in via `clm daemon enable`. Requires `terminal-notifier` (`brew install terminal-notifier`).
 
 ## Corpus Structure
 

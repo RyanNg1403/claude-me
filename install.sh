@@ -25,6 +25,7 @@ SYMLINK_TARGET="$SKILLS_DIR/claude-me"
 SETTINGS_FILE="$CLAUDE_HOME/settings.json"
 DATA_DIR="$CLAUDE_HOME/claude-me"
 HOOK_COMMAND="bash $SYMLINK_TARGET/scripts/hook-handler.sh"
+STATUSLINE_COMMAND="bash $SYMLINK_TARGET/scripts/statusline.sh"
 
 echo "Installing claude-me..."
 
@@ -129,7 +130,29 @@ EOF
 fi
 
 # ---------------------------------------------------------------------------
-# 5. Add CLAUDE.md hint
+# 5. Register status line in settings.json
+# ---------------------------------------------------------------------------
+if command -v jq &>/dev/null; then
+  existing_cmd="$(jq -r '.statusLine.command // ""' "$SETTINGS_FILE" 2>/dev/null)"
+  if [[ -z "$existing_cmd" ]]; then
+    tmp="$(mktemp)"
+    jq --arg cmd "$STATUSLINE_COMMAND" \
+      '.statusLine = {"type": "command", "command": $cmd}' \
+      "$SETTINGS_FILE" > "$tmp" && mv "$tmp" "$SETTINGS_FILE"
+    echo "  Registered status line in settings.json"
+  elif [[ "$existing_cmd" == *"claude-me/scripts/statusline.sh"* ]]; then
+    echo "  Status line already registered"
+  else
+    echo "  WARNING: statusLine already configured: $existing_cmd"
+    echo "  To show corpus stats, integrate this into your status line:"
+    echo "    \$($STATUSLINE_COMMAND)"
+  fi
+else
+  echo "  WARNING: jq not found, skipped status line registration"
+fi
+
+# ---------------------------------------------------------------------------
+# 6. Add CLAUDE.md hint
 # ---------------------------------------------------------------------------
 read -r -d '' CLAUDE_MD_HINT << 'HINT' || true
 ## User Preferences (claude-me)
@@ -159,6 +182,29 @@ fi
 
 # Create notes directory
 mkdir -p "$DATA_DIR/notes"
+
+# ---------------------------------------------------------------------------
+# 7. Detect terminal-notifier (used by the optional daily daemon)
+# ---------------------------------------------------------------------------
+# We do NOT auto-enable the daemon at install — the user opts in via
+# `clm daemon enable`. We just warn if terminal-notifier is missing so they
+# know what's needed before attempting to enable it.
+if command -v terminal-notifier &>/dev/null; then
+  echo "  terminal-notifier detected (daemon available: clm daemon enable)"
+else
+  echo "  NOTE: terminal-notifier not installed (optional, for clm daemon)"
+  echo "        To enable daily notifications: brew install terminal-notifier"
+fi
+
+# ---------------------------------------------------------------------------
+# 8. Migrate / repair freshness metadata on existing corpus
+# ---------------------------------------------------------------------------
+# Idempotent: no-op on a fresh install with empty corpus, fills in missing
+# created_at / last_verified / verify_count fields on any existing entries.
+bash "$ME_AGENT_DIR/scripts/repair-freshness.sh" 2>&1 | sed 's/^/  /' || true
+
+# Build initial stats cache so the status line has something to read on first render
+bash -c "source '$ME_AGENT_DIR/scripts/utils.sh' && write_stats_cache" || true
 
 # ---------------------------------------------------------------------------
 # Done

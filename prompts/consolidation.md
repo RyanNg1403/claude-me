@@ -36,6 +36,27 @@ IMPORTANT: Act immediately — do NOT ask for confirmation or approval. You are 
 
 Do NOT modify any ME.md files — those are indexes rebuilt automatically after you finish.
 
+## Freshness Metadata (required on all entries)
+
+Every entry has three freshness fields in its frontmatter alongside `name` and `description`:
+
+```
+created_at: 2026-04-10     # YYYY-MM-DD, when the entry was first created
+last_verified: 2026-04-10  # YYYY-MM-DD, when the entry was last touched/confirmed
+verify_count: 0            # integer, how many times the user has explicitly verified it
+```
+
+**When merging two or more entries into one**, compute the merged metadata as:
+- `created_at` = the **OLDEST** value from the merged entries (we want to remember how long the user has held this preference)
+- `last_verified` = **today's date** (the merge itself is a fresh touch)
+- `verify_count` = the **SUM** of all merged entries' counts (the new entry inherits the combined endorsement weight)
+
+**When modifying an entry in place (not merging)**, just bump `last_verified` to today. Leave `created_at` and `verify_count` alone.
+
+**When creating a brand-new entry** (rare during consolidation), use today's date for both dates and `verify_count: 0`.
+
+Today's date will be provided in the runtime context below. A post-process repair sweep will normalize any formatting mistakes, so don't agonize over them — just do your best to write valid `YYYY-MM-DD` dates and integer counts.
+
 ## Interview Questions
 
 When you encounter situations that need user input, write a JSON file called `pending-questions.json` in the working directory. This file will be shown to the user later.

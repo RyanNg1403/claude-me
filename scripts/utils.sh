@@ -22,6 +22,8 @@ PROCESSED_FILE="$DATA_DIR/.processed"
 NOTES_DIR="$DATA_DIR/notes"
 QUESTIONS_FILE="$DATA_DIR/pending-questions.json"
 COSTS_FILE="$DATA_DIR/costs.csv"
+STATS_FILE="$DATA_DIR/.stats.json"
+TRASH_DIR="$DATA_DIR/trash"
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -563,6 +565,174 @@ notify_pending_questions() {
     echo ""
     echo "  $count interview question(s) pending — run 'clm interview' or '/claude-me interview'"
   fi
+}
+
+# ---------------------------------------------------------------------------
+# Soft delete — move corpus entries to trash instead of hard rm
+# ---------------------------------------------------------------------------
+# Every deletion of a corpus entry (via daemon, extract note-override, or
+# consolidation) goes through soft_delete. Files land in $TRASH_DIR with a
+# timestamped name that preserves the original category + filename, so manual
+# recovery is possible via `mv`. cleanup_trash() prunes entries older than
+# trash_retention_days (default 7) — called at the end of extract.sh and
+# consolidate.sh.
+#
+# Why trash lives outside corpus/: all our walkers iterate $CORPUS_DIR/*/
+# for subfolder in ...; a trash dir inside corpus/ would be picked up as a
+# category. Sibling placement at $DATA_DIR/trash/ avoids that entire class
+# of bug.
+
+# Move a corpus entry to the trash dir. Safe to call with a non-existent file.
+# Refuses to operate on paths outside $CORPUS_DIR — defense in depth so a
+# bad caller can't soft-delete arbitrary files on disk.
+# Usage: soft_delete "/path/to/corpus/rules/foo.md"
+soft_delete() {
+  local file="$1"
+  if [[ ! -f "$file" ]]; then
+    return 0
+  fi
+
+  # Resolve to a canonical absolute path so symlinks and ../ tricks can't
+  # bypass the corpus-prefix check
+  local resolved
+  resolved="$(cd "$(dirname "$file")" && pwd)/$(basename "$file")"
+
+  if [[ "$resolved" != "$CORPUS_DIR"/* ]]; then
+    log "soft_delete: refusing to delete file outside corpus: $file"
+    echo "soft_delete: refusing to operate on a file outside the corpus dir" >&2
+    echo "  file: $file" >&2
+    echo "  corpus: $CORPUS_DIR" >&2
+    return 1
+  fi
+
+  mkdir -p "$TRASH_DIR"
+
+  local rel_path category fname ts
+  # Compute path relative to corpus dir (e.g. "rules/foo.md")
+  rel_path="${resolved#"$CORPUS_DIR"/}"
+  category="$(dirname "$rel_path")"
+  fname="$(basename "$rel_path")"
+  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+
+  # Flattened trash name preserves category so restore is unambiguous
+  # e.g. "20260410T093015Z__rules__never-commit-untested.md"
+  local trash_name="${ts}__${category}__${fname}"
+  local trash_path="$TRASH_DIR/$trash_name"
+
+  # If something's already there (unlikely — same-second collision), add PID suffix
+  if [[ -e "$trash_path" ]]; then
+    trash_path="$TRASH_DIR/${ts}__${category}__${fname%.md}__$$.md"
+  fi
+
+  mv "$resolved" "$trash_path"
+  log "Soft-deleted: $rel_path → trash/$(basename "$trash_path")"
+}
+
+# Prune trash entries older than trash_retention_days. Called at the end of
+# extract.sh / consolidate.sh so trash self-maintains.
+cleanup_trash() {
+  if [[ ! -d "$TRASH_DIR" ]]; then
+    return 0
+  fi
+
+  local retention
+  retention="$(get_config_value trash_retention_days)"
+  retention="${retention:-7}"
+
+  # macOS find supports -mtime with +N (strictly older than N days)
+  local pruned=0
+  while IFS= read -r -d '' old; do
+    rm -f "$old" && pruned=$((pruned + 1))
+  done < <(find "$TRASH_DIR" -type f -name '*.md' -mtime +"$retention" -print0 2>/dev/null)
+
+  if [[ $pruned -gt 0 ]]; then
+    log "Pruned $pruned old trash entries (> ${retention}d)"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Freshness / stats cache
+# ---------------------------------------------------------------------------
+
+# Returns today's date as YYYY-MM-DD (used by extract/consolidate prompts)
+get_today() {
+  date -u +%Y-%m-%d
+}
+
+# Compute corpus stats and write to $STATS_FILE for the status line script.
+# Counts total entries, stale entries (last_verified older than threshold),
+# and pending interview questions. Refreshed by extract/consolidate/interview.
+write_stats_cache() {
+  if ! command -v python3 &>/dev/null; then
+    return 0
+  fi
+
+  local threshold
+  threshold="$(get_config_value staleness_threshold_days)"
+  threshold="${threshold:-30}"
+
+  mkdir -p "$DATA_DIR"
+
+  python3 - "$CORPUS_DIR" "$threshold" "$QUESTIONS_FILE" "$STATS_FILE" <<'PYEOF'
+import sys, re, json
+from datetime import datetime, date, timedelta
+from pathlib import Path
+
+corpus_dir = Path(sys.argv[1])
+threshold_days = int(sys.argv[2])
+questions_file = Path(sys.argv[3])
+output = Path(sys.argv[4])
+
+today = date.today()
+cutoff = today - timedelta(days=threshold_days)
+
+LAST_VERIFIED_RE = re.compile(r'^last_verified:\s*(.+)$', re.MULTILINE)
+
+total = 0
+stale = 0
+
+if corpus_dir.exists():
+    for category_dir in corpus_dir.iterdir():
+        if not category_dir.is_dir():
+            continue
+        for f in category_dir.glob('*.md'):
+            if f.name == 'ME.md':
+                continue
+            total += 1
+            try:
+                content = f.read_text()
+            except OSError:
+                continue
+            m = LAST_VERIFIED_RE.search(content)
+            if not m:
+                stale += 1
+                continue
+            value = m.group(1).strip().strip('"').strip("'")
+            try:
+                lv = datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                stale += 1
+                continue
+            if lv < cutoff:
+                stale += 1
+
+pending = 0
+if questions_file.exists():
+    try:
+        data = json.loads(questions_file.read_text())
+        if isinstance(data, list):
+            pending = len(data)
+    except (OSError, json.JSONDecodeError):
+        pending = 0
+
+output.parent.mkdir(parents=True, exist_ok=True)
+output.write_text(json.dumps({
+    'total': total,
+    'stale': stale,
+    'pending': pending,
+    'updated_at': datetime.now().isoformat(timespec='seconds'),
+}))
+PYEOF
 }
 
 # ---------------------------------------------------------------------------

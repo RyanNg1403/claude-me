@@ -28,6 +28,14 @@ GLOBAL_CLAUDE_MD="$CLAUDE_HOME/CLAUDE.md"
 echo "Uninstalling claude-me..."
 
 # ---------------------------------------------------------------------------
+# 0. Unregister daily notification daemon (best-effort, silent if not loaded)
+# ---------------------------------------------------------------------------
+ME_AGENT_DIR_GUESS="$(dirname "$0")"
+if [[ -f "$ME_AGENT_DIR_GUESS/scripts/daemon-disable.sh" ]]; then
+  bash "$ME_AGENT_DIR_GUESS/scripts/daemon-disable.sh" 2>/dev/null | sed 's/^/  /' || true
+fi
+
+# ---------------------------------------------------------------------------
 # 1. Remove SessionEnd hook from settings.json
 # ---------------------------------------------------------------------------
 if [[ -f "$SETTINGS_FILE" ]] && command -v jq &>/dev/null; then
@@ -43,6 +51,14 @@ if [[ -f "$SETTINGS_FILE" ]] && command -v jq &>/dev/null; then
     echo "  Removed SessionEnd hook from settings.json"
   else
     echo "  No SessionEnd hook found"
+  fi
+
+  # Remove statusLine only if it points at our script (don't clobber others)
+  statusline_cmd="$(jq -r '.statusLine.command // ""' "$SETTINGS_FILE" 2>/dev/null)"
+  if [[ "$statusline_cmd" == *"claude-me/scripts/statusline.sh"* ]]; then
+    tmp="$(mktemp)"
+    jq 'del(.statusLine)' "$SETTINGS_FILE" > "$tmp" && mv "$tmp" "$SETTINGS_FILE"
+    echo "  Removed status line from settings.json"
   fi
 else
   echo "  WARNING: Could not update settings.json (jq not found or file missing)"

@@ -3,7 +3,18 @@
   "extraction_model": "haiku",
   "consolidation_model": "haiku",
   "project_freshness_days": 14,
+  "staleness_threshold_days": 30,
   "excluded_projects": [],
   "min_sessions_for_extraction": 1,
-  "debug": false
+  "debug": false,
+
+  "trash_retention_days": 7,
+
+  "daemon_hour": 9,
+  "daemon_minute": 0,
+  "daemon_stale_weight": 3,
+  "daemon_unverified_weight": 2,
+  "daemon_fresh_weight": 1,
+  "daemon_timeout_seconds": 300,
+  "daemon_stale_threshold_days": 30
 }
